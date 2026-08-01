@@ -28,7 +28,7 @@ const cooldownRemainingSec = computed(() => {
 });
 
 onMounted(() => {
-  if (stopStore.nearbyStops.length === 0) stopStore.loadNearby();
+  // 不在這裡自動抓取：附近站牌只在使用者按下「使用目前位置」時才會打 API，避免每次進頁面就消耗 TDX 額度
   tickTimer = setInterval(() => (nowTick.value = Date.now()), 1000);
 });
 
@@ -75,10 +75,11 @@ function openStop(id: string) {
       <LeafletMap :stops="stopStore.nearbyStops" :center="center" @select="openStop" />
     </div>
 
-    <div class="section-title">附近站牌清單{{ isRealData ? "" : "（模擬資料）" }}</div>
+    <div class="section-title">附近站牌清單{{ isRealData ? "" : stopStore.lastNearbyFetchAt ? "（模擬資料）" : "" }}</div>
     <div v-if="stopStore.error" class="error-hint">{{ stopStore.error }}</div>
     <div v-else class="card">
-      <div v-if="stopStore.nearbyStops.length === 0" class="empty-hint">目前無法取得即時資料</div>
+      <div v-if="stopStore.lastNearbyFetchAt === null" class="empty-hint">按上方「使用目前位置」開始查詢附近站牌</div>
+      <div v-else-if="stopStore.nearbyStops.length === 0" class="empty-hint">附近沒有找到站牌</div>
       <div v-for="stop in stopStore.nearbyStops" :key="stop.id" class="list-item" @click="openStop(stop.id)">
         <span>{{ stop.type === "metro" ? "🚇" : "🚌" }} {{ stop.name }}</span>
         <span v-if="stop.distance_meters !== null" class="distance">{{ stop.distance_meters }} 公尺</span>
