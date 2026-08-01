@@ -75,7 +75,7 @@ def _status_from_liveboard_entry(entry: dict) -> str:
     return f"約 {estimate_minutes} 分鐘"
 
 
-@async_ttl_cache(15)  # 即時看板短快取，兼顧新鮮度與吸收短時間內的重複點擊
+@async_ttl_cache(60)  # 即時看板快取，免費額度很緊，拉長快取優先保護額度而非資料新鮮度
 async def fetch_liveboard_tdx(station_name: str) -> list[dict]:
     """回傳指定站名的即時列車看板：[{destination, status}]。"""
     odata_filter = f"StationName/Zh_tw eq '{station_name}'"

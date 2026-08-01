@@ -103,7 +103,7 @@ def _status_from_eta(entry: dict | None) -> str:
     return f"約 {minutes} 分鐘"
 
 
-@async_ttl_cache(15)  # 含即時到站狀態，快取時間短一點以維持資料新鮮度，同時吸收短時間內的重複點擊
+@async_ttl_cache(60)  # 含即時到站狀態，免費額度很緊，拉長快取優先保護額度而非資料新鮮度
 async def get_route_detail_tdx(route_id: str) -> BusRoute | None:
     city, route_name = parse_route_id(route_id)
     stops_by_direction = await _fetch_stop_of_route(city, route_name)

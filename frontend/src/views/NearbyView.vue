@@ -7,7 +7,7 @@ import TopBar from "@/components/TopBar.vue";
 import { useGeolocation } from "@/composables/useGeolocation";
 import { useStopStore } from "@/stores/stop";
 
-const NEARBY_COOLDOWN_MS = 15000;
+const NEARBY_COOLDOWN_MS = 60000;
 
 const stopStore = useStopStore();
 const router = useRouter();
@@ -69,7 +69,7 @@ function openStop(id: string) {
     </button>
     <div v-if="status === 'denied'" class="hint-text">無法取得定位權限，顯示台北車站周邊做為預設位置</div>
     <div v-else-if="status === 'unsupported'" class="hint-text">此裝置不支援定位，顯示台北車站周邊做為預設位置</div>
-    <div v-else-if="cooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 15 秒一次</div>
+    <div v-else-if="cooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次</div>
 
     <div class="map-wrap">
       <LeafletMap :stops="stopStore.nearbyStops" :center="center" @select="openStop" />
