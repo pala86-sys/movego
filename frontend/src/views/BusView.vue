@@ -4,7 +4,6 @@ import { ref } from "vue";
 import FavoriteStar from "@/components/FavoriteStar.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import TopBar from "@/components/TopBar.vue";
-import { debounce } from "@/composables/useDebouncedRef";
 import { useBusStore } from "@/stores/bus";
 import { useRecentQueriesStore } from "@/stores/recentQueries";
 
@@ -13,11 +12,14 @@ const recentStore = useRecentQueriesStore();
 
 const keyword = ref("");
 const direction = ref<"outbound" | "inbound">("outbound");
+const hasSearched = ref(false);
 
-const runSearch = debounce((value: string) => busStore.search(value), 300);
-
-function onInput() {
-  runSearch(keyword.value);
+// 改成手動送出才查詢（按 Enter 或搜尋按鈕），而不是打字就搜，
+// 避免打「611」的過程中「6」「61」「611」各自觸發一次 TDX 呼叫，浪費免費額度。
+function onSearch() {
+  if (!keyword.value.trim()) return;
+  hasSearched.value = true;
+  busStore.search(keyword.value);
 }
 
 async function openRoute(routeId: string) {
@@ -38,23 +40,28 @@ function back() {
     <TopBar title="公車路線查詢" />
 
     <template v-if="!busStore.currentRoute">
-      <input
-        v-model="keyword"
-        class="input"
-        type="search"
-        inputmode="search"
-        placeholder="輸入公車號碼，例如 0100"
-        @input="onInput"
-      />
+      <form class="search-row" @submit.prevent="onSearch">
+        <input
+          v-model="keyword"
+          class="input"
+          type="search"
+          inputmode="search"
+          placeholder="輸入公車號碼，例如 0100，按 Enter 搜尋"
+        />
+        <button class="btn" type="submit" :disabled="!keyword.trim()">搜尋</button>
+      </form>
 
       <div v-if="busStore.loading" class="card" style="margin-top: 16px">
         <div class="empty-hint">查詢中…</div>
       </div>
       <div v-else-if="busStore.error" class="error-hint" style="margin-top: 16px">{{ busStore.error }}</div>
-      <div v-else-if="keyword && busStore.searchResults.length === 0" class="card" style="margin-top: 16px">
+      <div v-else-if="!hasSearched" class="card" style="margin-top: 16px">
+        <div class="empty-hint">輸入公車號碼後按 Enter 或搜尋按鈕開始查詢</div>
+      </div>
+      <div v-else-if="busStore.searchResults.length === 0" class="card" style="margin-top: 16px">
         <div class="empty-hint">找不到符合的公車路線</div>
       </div>
-      <div v-else-if="busStore.searchResults.length > 0" class="card" style="margin-top: 16px">
+      <div v-else class="card" style="margin-top: 16px">
         <div v-for="route in busStore.searchResults" :key="route.id" class="list-item route-item" @click="openRoute(route.id)">
           <div>
             <div class="route-name">{{ route.name }}</div>
@@ -112,6 +119,20 @@ function back() {
 </template>
 
 <style scoped>
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.search-row .input {
+  flex: 1;
+}
+
+.search-row .btn {
+  flex-shrink: 0;
+  padding: 0 20px;
+}
+
 .route-item {
   cursor: pointer;
 }
