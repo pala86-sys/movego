@@ -1,10 +1,14 @@
-"""TDX 公車資料轉換：路線搜尋、去回程站牌、即時到站狀態。
+"""TDX 公車資料轉換。
 
-大台北範圍固定查詢「Taipei」（臺北市）與「NewTaipei」（新北市）兩個 City，合併結果。
+路線／站牌是很少變動的靜態參考資料，所以採「一次性批次同步」策略：
+啟動時把台北市＋新北市全部路線與站牌一次抓進 SQLite（見 tdx_bus_sync.py），
+之後搜尋、瀏覽路線一律讀本機資料庫，不會再即時打 TDX。
+只有「到站狀態」是真正需要即時性的資料，才會在查看路線詳情時呼叫 TDX，
+且有短時間快取吸收重複瀏覽，盡量不浪費免費額度。
+
 欄位名稱依 TDX Basic API v2 Bus 資料集；若 TDX 回傳格式有異動，個別欄位讀取皆使用 .get()
 防呆，寧可缺欄位也不要讓整支 API 掛掉。
 """
-from app.schemas.bus import BusDirection, BusRoute, BusRouteSummary, BusStopArrival
 from app.services.tdx_client import tdx_get
 from app.services.ttl_cache import async_ttl_cache
 
@@ -32,63 +36,52 @@ def parse_route_id(route_id: str) -> tuple[str, str]:
     return CITIES[0], route_id
 
 
-@async_ttl_cache(300)  # 路線清單是靜態參考資料，快取 5 分鐘大幅降低額度消耗
-async def search_routes_tdx(keyword: str) -> list[BusRouteSummary]:
-    keyword = keyword.strip()
-    if not keyword:
-        return []
-
-    results: list[BusRouteSummary] = []
-    seen: set[str] = set()
+async def fetch_all_routes_tdx() -> list[dict]:
+    """一次抓台北市＋新北市全部路線的基本資料（不含站牌），共 2 次 TDX 呼叫。"""
+    routes: list[dict] = []
     for city in CITIES:
-        odata_filter = f"contains(RouteName/Zh_tw,'{keyword}')"
-        data = await tdx_get(f"/v2/Bus/Route/City/{city}", {"$filter": odata_filter, "$top": 30})
+        data = await tdx_get(f"/v2/Bus/Route/City/{city}", {"$top": 2000})
         for item in data if isinstance(data, list) else []:
             name = _zh(item.get("RouteName"))
-            if not name or name in seen:
+            if not name:
                 continue
-            seen.add(name)
-            results.append(
-                BusRouteSummary(
-                    id=make_route_id(city, name),
-                    name=name,
-                    operator=item.get("Operators", [{}])[0].get("OperatorName", {}).get("Zh_tw", "")
-                    if item.get("Operators")
-                    else "",
-                    **{
-                        "from_": item.get("DepartureStopNameZh") or "",
-                        "to": item.get("DestinationStopNameZh") or "",
-                    },
-                )
-            )
-    return results
+            operator = ""
+            if item.get("Operators"):
+                operator = item["Operators"][0].get("OperatorName", {}).get("Zh_tw", "")
+            routes.append({"city": city, "name": name, "operator": operator})
+    return routes
 
 
-async def _fetch_stop_of_route(city: str, route_name: str) -> dict[int, list[dict]]:
-    data = await tdx_get(f"/v2/Bus/StopOfRoute/City/{city}/{route_name}")
-    by_direction: dict[int, list[dict]] = {}
-    for entry in data if isinstance(data, list) else []:
-        direction = entry.get("Direction")
-        if direction not in (0, 1):
-            continue
-        stops = sorted(entry.get("Stops", []), key=lambda s: s.get("StopSequence", 0))
-        by_direction[direction] = stops
-    return by_direction
+async def fetch_all_stop_of_route_tdx() -> list[dict]:
+    """一次抓台北市＋新北市『全部路線』的去回程站牌，共 2 次 TDX 呼叫（不用逐條路線各打一次）。"""
+    entries: list[dict] = []
+    for city in CITIES:
+        data = await tdx_get(f"/v2/Bus/StopOfRoute/City/{city}", {"$top": 3000})
+        for entry in data if isinstance(data, list) else []:
+            direction = entry.get("Direction")
+            name = _zh(entry.get("RouteName"))
+            if not name or direction not in (0, 1):
+                continue
+            stops = sorted(entry.get("Stops", []), key=lambda s: s.get("StopSequence", 0))
+            if not stops:
+                continue
+            entries.append({"city": city, "name": name, "direction": direction, "stops": stops})
+    return entries
 
 
-async def _fetch_eta(city: str, route_name: str) -> dict[tuple[int, str], dict]:
-    """回傳 {(direction, StopUID): eta資料} 方便依站牌對應。"""
+@async_ttl_cache(60)  # 免費額度很緊，優先保護額度而非到站時間的絕對新鮮度
+async def fetch_eta_by_stop_uid(city: str, route_name: str) -> dict[str, dict]:
+    """回傳指定路線的即時到站資料，key 為 StopUID；去回程都包含在同一次呼叫的結果裡。"""
     data = await tdx_get(f"/v2/Bus/EstimatedTimeOfArrival/City/{city}/{route_name}")
-    result: dict[tuple[int, str], dict] = {}
+    result: dict[str, dict] = {}
     for entry in data if isinstance(data, list) else []:
-        direction = entry.get("Direction")
         stop_uid = entry.get("StopUID")
-        if direction in (0, 1) and stop_uid:
-            result[(direction, stop_uid)] = entry
+        if stop_uid:
+            result[stop_uid] = entry
     return result
 
 
-def _status_from_eta(entry: dict | None) -> str:
+def status_from_eta(entry: dict | None) -> str:
     if entry is None:
         return "尚未發車"
     stop_status = entry.get("StopStatus", 0)
@@ -103,50 +96,10 @@ def _status_from_eta(entry: dict | None) -> str:
     return f"約 {minutes} 分鐘"
 
 
-@async_ttl_cache(60)  # 含即時到站狀態，免費額度很緊，拉長快取優先保護額度而非資料新鮮度
-async def get_route_detail_tdx(route_id: str) -> BusRoute | None:
-    city, route_name = parse_route_id(route_id)
-    stops_by_direction = await _fetch_stop_of_route(city, route_name)
-    if not stops_by_direction:
-        return None
-    eta_by_key = await _fetch_eta(city, route_name)
-
-    directions: dict[str, BusDirection] = {}
-    for direction, stops in stops_by_direction.items():
-        if not stops:
-            continue
-        stop_arrivals = [
-            BusStopArrival(
-                stop_name=_zh(stop.get("StopName")),
-                status=_status_from_eta(eta_by_key.get((direction, stop.get("StopUID")))),
-                is_mock=False,
-            )
-            for stop in stops
-        ]
-        directions[DIRECTION_KEYS[direction]] = BusDirection(
-            direction=DIRECTION_LABELS[direction],
-            **{
-                "from_": _zh(stops[0].get("StopName")),
-                "to": _zh(stops[-1].get("StopName")),
-            },
-            stops=stop_arrivals,
-        )
-
-    if "outbound" not in directions or "inbound" not in directions:
-        return None
-
-    return BusRoute(
-        id=make_route_id(city, route_name),
-        name=route_name,
-        operator="",
-        outbound=directions["outbound"],
-        inbound=directions["inbound"],
-    )
-
-
 async def fetch_nearby_stops_tdx(lat: float, lng: float, radius_m: int = 500) -> list[dict]:
     """回傳指定座標附近的真實公車站牌（合併台北市與新北市）。
 
+    這個查詢跟使用者當下位置有關，沒辦法預先批次同步，所以還是即時呼叫 TDX。
     同一站名可能有多個站牌（不同去回程／不同月台位置），這裡依站名合併成一筆，
     只保留離查詢點最近的座標，避免列表出現大量重複站名。
     """

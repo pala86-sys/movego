@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db.database import Base, SessionLocal, engine
 from app.db.seed import seed_if_empty
 from app.routers import bus, metro, stop
+from app.services.tdx_bus_sync import sync_bus_routes_if_needed
 
 settings = get_settings()
 
@@ -17,6 +18,8 @@ async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         seed_if_empty(db)
+        if settings.use_tdx:
+            await sync_bus_routes_if_needed(db)
     yield
 
 

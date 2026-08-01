@@ -51,16 +51,20 @@ def search_stop(keyword: str) -> list[StopSearchResult]:
     matched_names: set[str] = set()
     for route in _load_raw_routes():
         for direction in (route["outbound"], route["inbound"]):
-            for stop_name in direction["stops"]:
-                if keyword in stop_name:
-                    matched_names.add(stop_name)
+            if not direction:
+                continue
+            for stop in direction["stops"]:
+                if keyword in stop["name"]:
+                    matched_names.add(stop["name"])
 
     results: list[StopSearchResult] = []
     for stop_name in sorted(matched_names):
         routes: list[RouteAtStop] = []
         for route in _load_raw_routes():
             for direction in (route["outbound"], route["inbound"]):
-                if stop_name in direction["stops"]:
+                if not direction:
+                    continue
+                if any(s["name"] == stop_name for s in direction["stops"]):
                     routes.append(
                         RouteAtStop(
                             route_id=route["id"],

@@ -12,12 +12,9 @@ router = APIRouter(prefix="/api/bus", tags=["bus"])
 
 
 @router.get("/search", response_model=list[BusRouteSummary])
-async def search_routes(keyword: str = Query("", description="公車路線號碼關鍵字")):
-    try:
-        return await bus_service.search_routes(keyword)
-    except TDXError as exc:
-        logger.warning("TDX 公車搜尋失敗：%s", exc)
-        raise HTTPException(status_code=503, detail="目前無法取得即時資料")
+def search_routes(keyword: str = Query("", description="公車路線號碼關鍵字")):
+    # 純讀本機資料庫，不會打 TDX，不需要特別處理 TDXError
+    return bus_service.search_routes(keyword)
 
 
 @router.get("/{route_id:path}", response_model=BusRoute)

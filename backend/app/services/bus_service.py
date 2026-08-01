@@ -1,7 +1,9 @@
 """公車資料存取邏輯。
 
-USE_TDX=false（預設）時使用 SQLite 內的模擬資料；USE_TDX=true 時改為即時呼叫 TDX，
-失敗時直接向上拋出例外，由 router 轉成「目前無法取得即時資料」，不會偷偷退回模擬資料。
+路線／站牌一律讀 SQLite（USE_TDX=false 時是內建 5 條示範路線；USE_TDX=true 時是
+啟動時從 TDX 批次同步進來的全量真實路線，見 tdx_bus_sync.py），搜尋與瀏覽路線
+完全不會即時打 TDX。只有查看路線詳情時，如果 USE_TDX=true，才會額外打 1 次 TDX
+取得該路線的即時到站狀態（已快取，見 tdx_bus_service.fetch_eta_by_stop_uid）。
 """
 from functools import lru_cache
 
@@ -15,7 +17,7 @@ from app.services.realtime_service import mock_arrival_status
 
 @lru_cache
 def _load_raw_routes() -> list[dict]:
-    """從 SQLite 讀取公車路線與去回程站牌（結果快取，因參考資料為靜態資料）。"""
+    """從 SQLite 讀取公車路線與去回程站牌（結果快取，因為同一次啟動內資料不會變動）。"""
     with SessionLocal() as db:
         route_models = db.query(BusRouteModel).all()
         routes: list[dict] = []
@@ -29,13 +31,14 @@ def _load_raw_routes() -> list[dict]:
                     "direction": stops[0].direction_label,
                     "from": stops[0].from_name,
                     "to": stops[0].to_name,
-                    "stops": [s.stop_name for s in stops],
+                    "stops": [{"name": s.stop_name, "stop_uid": s.stop_uid} for s in stops],
                 }
             routes.append(
                 {
                     "id": route.id,
                     "name": route.name,
                     "operator": route.operator,
+                    "city": route.city,
                     "outbound": directions["outbound"],
                     "inbound": directions["inbound"],
                 }
@@ -43,16 +46,12 @@ def _load_raw_routes() -> list[dict]:
         return routes
 
 
-async def search_routes(keyword: str) -> list[BusRouteSummary]:
-    if get_settings().use_tdx:
-        return await tdx_bus_service.search_routes_tdx(keyword)
-    return _search_routes_mock(keyword)
-
-
-def _search_routes_mock(keyword: str) -> list[BusRouteSummary]:
+def search_routes(keyword: str) -> list[BusRouteSummary]:
     keyword = keyword.strip()
     result = []
     for route in _load_raw_routes():
+        if not route["outbound"]:
+            continue
         if keyword and keyword.lower() not in route["name"].lower():
             continue
         result.append(
@@ -66,14 +65,16 @@ def _search_routes_mock(keyword: str) -> list[BusRouteSummary]:
     return result
 
 
-def _build_direction(raw_direction: dict, route_id: str) -> BusDirection:
-    stops = [
-        BusStopArrival(
-            stop_name=name,
-            status=mock_arrival_status(route_id, raw_direction["direction"], name),
-        )
-        for name in raw_direction["stops"]
-    ]
+def _build_direction(raw_direction: dict, route_id: str, eta_by_uid: dict[str, dict] | None) -> BusDirection:
+    stops = []
+    for stop in raw_direction["stops"]:
+        if eta_by_uid is not None:
+            status = tdx_bus_service.status_from_eta(eta_by_uid.get(stop["stop_uid"]))
+            is_mock = False
+        else:
+            status = mock_arrival_status(route_id, raw_direction["direction"], stop["name"])
+            is_mock = True
+        stops.append(BusStopArrival(stop_name=stop["name"], status=status, is_mock=is_mock))
     return BusDirection(
         direction=raw_direction["direction"],
         **{"from_": raw_direction["from"], "to": raw_direction["to"]},
@@ -82,19 +83,22 @@ def _build_direction(raw_direction: dict, route_id: str) -> BusDirection:
 
 
 async def get_route_detail(route_id: str) -> BusRoute | None:
-    if get_settings().use_tdx:
-        return await tdx_bus_service.get_route_detail_tdx(route_id)
-    return _get_route_detail_mock(route_id)
-
-
-def _get_route_detail_mock(route_id: str) -> BusRoute | None:
+    matched = None
     for route in _load_raw_routes():
         if route["id"].lower() == route_id.lower():
-            return BusRoute(
-                id=route["id"],
-                name=route["name"],
-                operator=route["operator"],
-                outbound=_build_direction(route["outbound"], route["id"]),
-                inbound=_build_direction(route["inbound"], route["id"]),
-            )
-    return None
+            matched = route
+            break
+    if matched is None or not matched["outbound"] or not matched["inbound"]:
+        return None
+
+    eta_by_uid: dict[str, dict] | None = None
+    if get_settings().use_tdx:
+        eta_by_uid = await tdx_bus_service.fetch_eta_by_stop_uid(matched["city"], matched["name"])
+
+    return BusRoute(
+        id=matched["id"],
+        name=matched["name"],
+        operator=matched["operator"],
+        outbound=_build_direction(matched["outbound"], matched["id"], eta_by_uid),
+        inbound=_build_direction(matched["inbound"], matched["id"], eta_by_uid),
+    )

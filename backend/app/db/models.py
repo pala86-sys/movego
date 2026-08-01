@@ -35,6 +35,9 @@ class BusRouteModel(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
     operator: Mapped[str] = mapped_column(String)
+    # 模擬資料沒有城市概念留空即可；TDX 同步進來的資料會填 Taipei/NewTaipei，
+    # 查即時到站狀態時需要靠這個欄位決定要打哪個 City 的 TDX API。
+    city: Mapped[str] = mapped_column(String, default="")
 
     stops: Mapped[list["BusRouteStopModel"]] = relationship(
         back_populates="route", order_by="BusRouteStopModel.seq", cascade="all, delete-orphan"
@@ -52,6 +55,8 @@ class BusRouteStopModel(Base):
     to_name: Mapped[str] = mapped_column(String)
     seq: Mapped[int] = mapped_column()
     stop_name: Mapped[str] = mapped_column(String)
+    # TDX 站牌唯一識別碼，只有 TDX 同步資料才有值，用來對應即時到站 API 的回傳
+    stop_uid: Mapped[str] = mapped_column(String, default="")
 
     route: Mapped[BusRouteModel] = relationship(back_populates="stops")
 
