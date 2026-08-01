@@ -6,6 +6,7 @@
 """
 from app.schemas.bus import BusDirection, BusRoute, BusRouteSummary, BusStopArrival
 from app.services.tdx_client import tdx_get
+from app.services.ttl_cache import async_ttl_cache
 
 CITIES = ["Taipei", "NewTaipei"]
 DIRECTION_LABELS = {0: "去程", 1: "返程"}
@@ -31,6 +32,7 @@ def parse_route_id(route_id: str) -> tuple[str, str]:
     return CITIES[0], route_id
 
 
+@async_ttl_cache(300)  # 路線清單是靜態參考資料，快取 5 分鐘大幅降低額度消耗
 async def search_routes_tdx(keyword: str) -> list[BusRouteSummary]:
     keyword = keyword.strip()
     if not keyword:
@@ -101,6 +103,7 @@ def _status_from_eta(entry: dict | None) -> str:
     return f"約 {minutes} 分鐘"
 
 
+@async_ttl_cache(15)  # 含即時到站狀態，快取時間短一點以維持資料新鮮度，同時吸收短時間內的重複點擊
 async def get_route_detail_tdx(route_id: str) -> BusRoute | None:
     city, route_name = parse_route_id(route_id)
     stops_by_direction = await _fetch_stop_of_route(city, route_name)
