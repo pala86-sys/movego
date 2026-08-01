@@ -49,10 +49,6 @@ function openRecent(item: (typeof recentStore.items)[number]) {
   else if (item.type === "stop") goToStop(item.key);
   else router.push("/bus");
 }
-
-if (stopStore.nearbyStops.length === 0) {
-  stopStore.loadNearby();
-}
 </script>
 
 <template>
@@ -106,11 +102,7 @@ if (stopStore.nearbyStops.length === 0) {
     <template v-else>
       <div class="section-title">附近站牌</div>
       <div class="card">
-        <div v-if="stopStore.nearbyStops.length === 0" class="empty-hint">目前無法取得即時資料</div>
-        <div v-for="stop in stopStore.nearbyStops.slice(0, 3)" :key="stop.id" class="list-item">
-          <span>{{ stop.type === "metro" ? "🚇" : "🚌" }} {{ stop.name }}</span>
-        </div>
-        <router-link to="/nearby" class="see-more">查看全部附近站牌 ›</router-link>
+        <router-link to="/nearby" class="see-more" style="padding: 4px 0">📍 查看附近站牌 ›</router-link>
       </div>
 
       <div class="section-title">常用收藏</div>
