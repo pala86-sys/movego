@@ -1,0 +1,44 @@
+# Render Blueprint：一次部署後端（FastAPI）與前端（靜態網站）兩個服務。
+# 使用方式：在 Render 儀表板選「New +」→「Blueprint」，指向這個 GitHub repo，Render 會自動讀取本檔案。
+#
+# 部署後必做的事：
+# 1. 到 movego-backend 服務的 Environment 分頁，手動填入 TDX_CLIENT_ID / TDX_CLIENT_SECRET
+#    （這裡故意不寫在檔案裡，避免金鑰進版本控制）。
+# 2. 確認下面兩個服務實際被分配到的網址，若與這裡預設的 movego-backend / movego-frontend
+#    不同（服務名稱被佔用時 Render 會自動改名），要回來更新彼此參照的網址。
+
+services:
+  - type: web
+    name: movego-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: USE_TDX
+        value: "true"
+      - key: TDX_CLIENT_ID
+        sync: false
+      - key: TDX_CLIENT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:///./movego.db
+      - key: CORS_ORIGINS
+        value: https://movego-frontend.onrender.com
+
+  - type: web
+    name: movego-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://movego-backend.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
