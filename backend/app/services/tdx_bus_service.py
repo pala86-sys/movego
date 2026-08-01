@@ -139,3 +139,34 @@ async def get_route_detail_tdx(route_id: str) -> BusRoute | None:
         outbound=directions["outbound"],
         inbound=directions["inbound"],
     )
+
+
+async def fetch_nearby_stops_tdx(lat: float, lng: float, radius_m: int = 500) -> list[dict]:
+    """回傳指定座標附近的真實公車站牌（合併台北市與新北市）。
+
+    同一站名可能有多個站牌（不同去回程／不同月台位置），這裡依站名合併成一筆，
+    只保留離查詢點最近的座標，避免列表出現大量重複站名。
+    """
+    by_name: dict[str, dict] = {}
+    for city in CITIES:
+        data = await tdx_get(
+            f"/v2/Bus/Stop/City/{city}",
+            {"$spatialFilter": f"nearby({lat},{lng},{radius_m})", "$top": 30},
+        )
+        for item in data if isinstance(data, list) else []:
+            stop_uid = item.get("StopUID")
+            name = _zh(item.get("StopName"))
+            if not stop_uid or not name:
+                continue
+            position = item.get("StopPosition") or {}
+            if name not in by_name:
+                by_name[name] = {
+                    "id": stop_uid,
+                    "name": name,
+                    "type": "bus",
+                    "lat": position.get("PositionLat", lat),
+                    "lng": position.get("PositionLon", lng),
+                    "lines": [],
+                    "routes": [],
+                }
+    return list(by_name.values())

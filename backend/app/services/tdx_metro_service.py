@@ -84,3 +84,33 @@ async def fetch_liveboard_tdx(station_name: str) -> list[dict]:
             destination = _zh(entry.get("DestinationStationName")) or entry.get("TripHeadSign", "")
             board.append({"destination": destination, "status": _status_from_liveboard_entry(entry)})
     return board
+
+
+async def fetch_nearby_stations_tdx(lat: float, lng: float, radius_m: int = 500) -> list[dict]:
+    """回傳指定座標附近的真實捷運站，同一站名（多線交會）會合併成一筆。"""
+    by_name: dict[str, dict] = {}
+    for rail_system in RAIL_SYSTEMS:
+        data = await tdx_get(
+            f"/v2/Rail/Metro/Station/{rail_system}",
+            {"$spatialFilter": f"nearby({lat},{lng},{radius_m})", "$top": 30},
+        )
+        for item in data if isinstance(data, list) else []:
+            name = _zh(item.get("StationName"))
+            station_id = item.get("StationID", "")
+            if not name:
+                continue
+            line_id = station_id.rstrip("0123456789")  # 例如 "BL12" -> "BL"，粗略取出路線代碼
+            position = item.get("StationPosition") or {}
+            if name not in by_name:
+                by_name[name] = {
+                    "id": item.get("StationUID", station_id),
+                    "name": name,
+                    "type": "metro",
+                    "lat": position.get("PositionLat", lat),
+                    "lng": position.get("PositionLon", lng),
+                    "lines": [],
+                    "routes": [],
+                }
+            if line_id and line_id not in by_name[name]["lines"]:
+                by_name[name]["lines"].append(line_id)
+    return list(by_name.values())

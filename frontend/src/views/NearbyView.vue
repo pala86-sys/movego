@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import LeafletMap from "@/components/LeafletMap.vue";
@@ -13,6 +13,7 @@ const { coords, status, request } = useGeolocation();
 
 const TAIPEI_STATION = { lat: 25.0478, lng: 121.517 };
 const center = computed(() => coords.value ?? TAIPEI_STATION);
+const isRealData = computed(() => stopStore.nearbyStops.some((s) => s.distance_meters !== null));
 
 onMounted(() => {
   if (stopStore.nearbyStops.length === 0) stopStore.loadNearby();
@@ -21,6 +22,10 @@ onMounted(() => {
 function onLocate() {
   request();
 }
+
+watch(coords, (value) => {
+  if (value) stopStore.loadNearby(value.lat, value.lng);
+});
 
 function openStop(id: string) {
   const stop = stopStore.nearbyStops.find((s) => s.id === id);
@@ -44,13 +49,14 @@ function openStop(id: string) {
       <LeafletMap :stops="stopStore.nearbyStops" :center="center" @select="openStop" />
     </div>
 
-    <div class="section-title">附近站牌清單（模擬資料）</div>
+    <div class="section-title">附近站牌清單{{ isRealData ? "" : "（模擬資料）" }}</div>
     <div v-if="stopStore.error" class="error-hint">{{ stopStore.error }}</div>
     <div v-else class="card">
       <div v-if="stopStore.nearbyStops.length === 0" class="empty-hint">目前無法取得即時資料</div>
       <div v-for="stop in stopStore.nearbyStops" :key="stop.id" class="list-item" @click="openStop(stop.id)">
         <span>{{ stop.type === "metro" ? "🚇" : "🚌" }} {{ stop.name }}</span>
-        <span class="arrow">›</span>
+        <span v-if="stop.distance_meters !== null" class="distance">{{ stop.distance_meters }} 公尺</span>
+        <span v-else class="arrow">›</span>
       </div>
     </div>
   </div>
@@ -71,6 +77,13 @@ function openStop(id: string) {
 
 .map-wrap {
   margin-bottom: 6px;
+}
+
+.distance {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .arrow {
