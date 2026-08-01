@@ -91,7 +91,8 @@ function back() {
             type="button"
             @click="direction = 'outbound'"
           >
-            去程 {{ busStore.currentRoute.outbound.from_ }} → {{ busStore.currentRoute.outbound.to }}
+            <span class="direction-label">去程</span>
+            <span class="direction-route">{{ busStore.currentRoute.outbound.from_ }} → {{ busStore.currentRoute.outbound.to }}</span>
           </button>
           <button
             class="direction-tab"
@@ -99,7 +100,8 @@ function back() {
             type="button"
             @click="direction = 'inbound'"
           >
-            返程 {{ busStore.currentRoute.inbound.from_ }} → {{ busStore.currentRoute.inbound.to }}
+            <span class="direction-label">返程</span>
+            <span class="direction-route">{{ busStore.currentRoute.inbound.from_ }} → {{ busStore.currentRoute.inbound.to }}</span>
           </button>
         </div>
 
@@ -183,8 +185,27 @@ function back() {
   color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
-  padding: 6px 8px;
+  padding: 8px;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.direction-label {
+  font-weight: 700;
+}
+
+.direction-route {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.direction-tab.active .direction-route {
+  color: inherit;
 }
 
 .direction-tab.active {
