@@ -100,11 +100,6 @@ function openRecent(item: (typeof recentStore.items)[number]) {
     </template>
 
     <template v-else>
-      <div class="section-title">附近站牌</div>
-      <div class="card">
-        <router-link to="/nearby" class="see-more" style="padding: 4px 0">📍 查看附近站牌 ›</router-link>
-      </div>
-
       <div class="section-title">常用收藏</div>
       <div class="card">
         <div v-if="favoritePreview.length === 0" class="empty-hint">尚未收藏任何路線或站牌</div>
