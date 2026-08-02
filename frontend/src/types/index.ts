@@ -102,3 +102,19 @@ export interface RecentQuery {
   /** 捷運路線查詢時的起點站名；只有 type 為 metro-station 且來自完整路線查詢時才會有值 */
   fromKey?: string;
 }
+
+/** 使用者手動排出來的一段路（例如自己知道的抄近路轉乘方式），不是系統算出來的。 */
+export interface CustomRouteLeg {
+  lineId: string;
+  lineName: string;
+  lineColor: string;
+  from: string;
+  to: string;
+}
+
+export interface CustomRoute {
+  id: string;
+  name: string;
+  legs: CustomRouteLeg[];
+  createdAt: number;
+}

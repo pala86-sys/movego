@@ -19,6 +19,23 @@ const router = createRouter({
       name: "metro-station-board",
       component: () => import("@/views/MetroStationBoardView.vue"),
       props: true
+    },
+    {
+      path: "/custom-routes/new",
+      name: "custom-route-new",
+      component: () => import("@/views/CustomRouteEditorView.vue")
+    },
+    {
+      path: "/custom-routes/:id/edit",
+      name: "custom-route-edit",
+      component: () => import("@/views/CustomRouteEditorView.vue"),
+      props: true
+    },
+    {
+      path: "/custom-routes/:id",
+      name: "custom-route-detail",
+      component: () => import("@/views/CustomRouteDetailView.vue"),
+      props: true
     }
   ]
 });
