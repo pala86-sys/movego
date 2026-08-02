@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import { searchMetroStations } from "@/api/metro";
@@ -7,6 +7,7 @@ import FavoriteStar from "@/components/FavoriteStar.vue";
 import MetroMapPicker from "@/components/MetroMapPicker.vue";
 import TopBar from "@/components/TopBar.vue";
 import { debounce } from "@/composables/useDebouncedRef";
+import { useCustomRoutesStore } from "@/stores/customRoutes";
 import { useMetroStore } from "@/stores/metro";
 import { useRecentQueriesStore } from "@/stores/recentQueries";
 import type { MetroStationSearchItem } from "@/types";
@@ -14,6 +15,7 @@ import type { MetroStationSearchItem } from "@/types";
 const route = useRoute();
 const metroStore = useMetroStore();
 const recentStore = useRecentQueriesStore();
+const customRoutesStore = useCustomRoutesStore();
 
 const fromInput = ref("");
 const toInput = ref("");
@@ -22,6 +24,15 @@ const toStation = ref("");
 const activeField = ref<"from" | "to" | null>(null);
 const suggestions = ref<MetroStationSearchItem[]>([]);
 const showMapPicker = ref(false);
+
+// 查詢成功後，如果剛好有存過同一組起訖點的自訂路線，讓使用者選要看系統算的還是自訂的
+const selectedView = ref<"system" | string>("system");
+const matchingCustomRoutes = computed(() =>
+  customRoutesStore.items.filter(
+    (r) => r.legs.length > 0 && r.legs[0].from === fromStation.value && r.legs[r.legs.length - 1].to === toStation.value
+  )
+);
+const selectedCustomRoute = computed(() => matchingCustomRoutes.value.find((r) => r.id === selectedView.value) ?? null);
 
 function setStation(role: "from" | "to", name: string) {
   if (role === "from") {
@@ -76,6 +87,7 @@ function pickSuggestion(name: string) {
 
 async function search() {
   if (!fromStation.value || !toStation.value) return;
+  selectedView.value = "system";
   await metroStore.planRoute(fromStation.value, toStation.value);
   if (metroStore.routePlan) {
     recentStore.add(
@@ -150,35 +162,68 @@ onMounted(() => {
       {{ metroStore.error }}
     </div>
 
-    <div v-else-if="metroStore.routePlan" class="card result-card">
-      <div class="summary-row">
-        <div class="summary-item">
-          <div class="summary-value">{{ metroStore.routePlan.estimated_minutes }} 分</div>
-          <div class="summary-label">預估時間</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-value">{{ metroStore.routePlan.transfer_count }} 次</div>
-          <div class="summary-label">轉乘</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-value">{{ metroStore.routePlan.total_stop_count }} 站</div>
-          <div class="summary-label">共經過</div>
-        </div>
-        <FavoriteStar
-          type="metro-station"
-          :item-key="metroStore.routePlan.to_station"
-          :label="metroStore.routePlan.to_station"
-        />
+    <template v-else-if="metroStore.routePlan">
+      <div v-if="matchingCustomRoutes.length > 0" class="view-tabs">
+        <button
+          class="view-tab"
+          :class="{ active: selectedView === 'system' }"
+          type="button"
+          @click="selectedView = 'system'"
+        >
+          系統安排
+        </button>
+        <button
+          v-for="r in matchingCustomRoutes"
+          :key="r.id"
+          class="view-tab"
+          :class="{ active: selectedView === r.id }"
+          type="button"
+          @click="selectedView = r.id"
+        >
+          🧭 {{ r.name }}
+        </button>
       </div>
 
-      <div v-for="(leg, index) in metroStore.routePlan.legs" :key="index" class="leg">
-        <div class="leg-line" :style="{ background: leg.line_color }">{{ leg.line_name }}</div>
-        <div class="leg-body">
-          <div>{{ leg.board_station }} → {{ leg.alight_station }}</div>
-          <div class="leg-meta">經過 {{ leg.stop_count }} 站</div>
+      <div v-if="selectedView === 'system'" class="card result-card">
+        <div class="summary-row">
+          <div class="summary-item">
+            <div class="summary-value">{{ metroStore.routePlan.estimated_minutes }} 分</div>
+            <div class="summary-label">預估時間</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ metroStore.routePlan.transfer_count }} 次</div>
+            <div class="summary-label">轉乘</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ metroStore.routePlan.total_stop_count }} 站</div>
+            <div class="summary-label">共經過</div>
+          </div>
+          <FavoriteStar
+            type="metro-station"
+            :item-key="metroStore.routePlan.to_station"
+            :label="metroStore.routePlan.to_station"
+          />
+        </div>
+
+        <div v-for="(leg, index) in metroStore.routePlan.legs" :key="index" class="leg">
+          <div class="leg-line" :style="{ background: leg.line_color }">{{ leg.line_name }}</div>
+          <div class="leg-body">
+            <div>{{ leg.board_station }} → {{ leg.alight_station }}</div>
+            <div class="leg-meta">經過 {{ leg.stop_count }} 站</div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <div v-else-if="selectedCustomRoute" class="card result-card">
+        <div class="custom-route-hint">這是你自己存的自訂路線，站數／時間未統計</div>
+        <div v-for="(leg, index) in selectedCustomRoute.legs" :key="index" class="leg">
+          <div class="leg-line" :style="{ background: leg.lineColor }">{{ leg.lineName }}</div>
+          <div class="leg-body">
+            <div>{{ leg.from }} → {{ leg.to }}</div>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <MetroMapPicker
       v-if="showMapPicker"
@@ -224,8 +269,42 @@ onMounted(() => {
   border-bottom: none;
 }
 
-.result-card {
+.view-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex-shrink: 0;
   margin-top: 16px;
+  padding-bottom: 4px;
+}
+
+.view-tab {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.view-tab.active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.custom-route-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.result-card {
+  margin-top: 10px;
 }
 
 .summary-row {
