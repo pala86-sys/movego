@@ -46,7 +46,7 @@ function back() {
           class="input"
           type="search"
           inputmode="search"
-          placeholder="輸入公車號碼，例如 0100，按 Enter 搜尋"
+          placeholder="請輸入公車號碼"
         />
         <button class="btn" type="submit" :disabled="!keyword.trim()">搜尋</button>
       </form>
