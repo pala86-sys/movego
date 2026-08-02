@@ -55,13 +55,10 @@ function back() {
         <div class="empty-hint">查詢中…</div>
       </div>
       <div v-else-if="busStore.error" class="error-hint" style="margin-top: 16px">{{ busStore.error }}</div>
-      <div v-else-if="!hasSearched" class="card" style="margin-top: 16px">
-        <div class="empty-hint">輸入公車號碼後按 Enter 或搜尋按鈕開始查詢</div>
-      </div>
-      <div v-else-if="busStore.searchResults.length === 0" class="card" style="margin-top: 16px">
+      <div v-else-if="hasSearched && busStore.searchResults.length === 0" class="card" style="margin-top: 16px">
         <div class="empty-hint">找不到符合的公車路線</div>
       </div>
-      <div v-else class="card" style="margin-top: 16px">
+      <div v-else-if="hasSearched" class="card" style="margin-top: 16px">
         <div v-for="route in busStore.searchResults" :key="route.id" class="list-item route-item" @click="openRoute(route.id)">
           <div>
             <div class="route-name">{{ route.name }}</div>
