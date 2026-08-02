@@ -166,8 +166,10 @@ function viewLiveboard() {
 
 .group-tabs {
   display: flex;
+  flex-shrink: 0;
   gap: 8px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 2px 16px 10px;
   margin: 0 -16px 6px;
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%);
