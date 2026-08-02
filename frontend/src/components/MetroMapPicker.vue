@@ -39,6 +39,28 @@ const groups = computed<LineGroup[]>(() => {
 const activeGroupId = ref(GROUP_ORDER[0]);
 const activeGroup = computed(() => groups.value.find((g) => g.groupId === activeGroupId.value) ?? groups.value[0]);
 
+// 站名 -> 有經過該站的主線 groupId 清單，用來標註轉乘站可以轉去哪條線
+const stationToGroupIds = computed(() => {
+  const map = new Map<string, Set<string>>();
+  for (const group of groups.value) {
+    for (const station of group.main.stations) {
+      if (!map.has(station.name)) map.set(station.name, new Set());
+      map.get(station.name)!.add(group.groupId);
+    }
+  }
+  return map;
+});
+
+function transferLabel(stationName: string, currentGroupId: string): string {
+  const groupIds = stationToGroupIds.value.get(stationName);
+  if (!groupIds) return "";
+  const others = Array.from(groupIds)
+    .filter((id) => id !== currentGroupId)
+    .map((id) => groups.value.find((g) => g.groupId === id)?.label)
+    .filter((label): label is string => !!label);
+  return others.length > 0 ? `可轉乘 ${others.join("、")}` : "";
+}
+
 const actionSheetStation = ref<string | null>(null);
 
 function openStation(name: string) {
@@ -91,6 +113,9 @@ function viewLiveboard() {
           <div v-for="station in activeGroup.main.stations" :key="station.id" class="station-row" @click="openStation(station.name)">
             <span class="station-dot"></span>
             <span class="station-name">{{ station.name }}</span>
+            <span v-if="transferLabel(station.name, activeGroup.groupId)" class="transfer-label">{{
+              transferLabel(station.name, activeGroup.groupId)
+            }}</span>
           </div>
         </div>
 
@@ -234,6 +259,16 @@ function viewLiveboard() {
 .station-name {
   font-size: 16px;
   font-weight: 600;
+}
+
+.transfer-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 
 .action-sheet-overlay {
