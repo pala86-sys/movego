@@ -14,6 +14,9 @@ const stopStore = useStopStore();
 const parkingStore = useParkingStore();
 const router = useRouter();
 const { coords, status, request } = useGeolocation();
+// 附近停車場用獨立的一份定位狀態，避免跟附近站牌共用同一個 coords watch，
+// 導致按「查詢附近停車場」時意外也把附近站牌的 TDX 額度一起打掉。
+const { coords: parkingCoords, status: parkingLocateStatus, request: requestParkingLocation } = useGeolocation();
 
 const TAIPEI_STATION = { lat: 25.0478, lng: 121.517 };
 const center = computed(() => coords.value ?? TAIPEI_STATION);
@@ -55,8 +58,20 @@ watch(coords, (value) => {
 
 function onSearchParking() {
   if (parkingCooldownRemainingSec.value > 0) return;
-  parkingStore.loadNearby(center.value.lat, center.value.lng);
+  // 如果已經定位過（不管是附近站牌那顆按鈕還是這裡自己），直接沿用，不用再跳一次權限詢問
+  const known = coords.value ?? parkingCoords.value;
+  if (known) {
+    parkingStore.loadNearby(known.lat, known.lng);
+  } else {
+    // 還沒定位過：先要求定位，拿到座標後由下面的 watch 接著查停車場，
+    // 避免像之前那樣悄悄用台北車站當預設值，查出離使用者實際位置很遠的結果。
+    requestParkingLocation();
+  }
 }
+
+watch(parkingCoords, (value) => {
+  if (value) parkingStore.loadNearby(value.lat, value.lng);
+});
 
 function openStop(id: string) {
   const stop = stopStore.nearbyStops.find((s) => s.id === id);
@@ -121,14 +136,16 @@ function spacesClass(availableSpaces: number | null): string {
     >
       🅿️
       {{
-        parkingStore.loading
-          ? "查詢中…"
+        parkingLocateStatus === "loading" || parkingStore.loading
+          ? "定位查詢中…"
           : parkingCooldownRemainingSec > 0
             ? `請稍候 ${parkingCooldownRemainingSec} 秒再更新`
             : "查詢附近停車場"
       }}
     </button>
-    <div v-if="parkingCooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次</div>
+    <div v-if="parkingLocateStatus === 'denied'" class="hint-text">無法取得定位權限，請開啟定位權限後再試一次</div>
+    <div v-else-if="parkingLocateStatus === 'unsupported'" class="hint-text">此裝置不支援定位</div>
+    <div v-else-if="parkingCooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次</div>
 
     <div v-if="parkingStore.error" class="error-hint">{{ parkingStore.error }}</div>
     <div v-else class="card">
