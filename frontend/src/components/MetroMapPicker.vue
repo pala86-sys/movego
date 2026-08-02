@@ -168,8 +168,10 @@ function viewLiveboard() {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 10px;
-  margin-bottom: 6px;
+  padding: 2px 16px 10px;
+  margin: 0 -16px 6px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%);
 }
 
 .group-tab {
