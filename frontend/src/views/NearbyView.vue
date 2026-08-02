@@ -5,11 +5,13 @@ import { useRouter } from "vue-router";
 import LeafletMap from "@/components/LeafletMap.vue";
 import TopBar from "@/components/TopBar.vue";
 import { useGeolocation } from "@/composables/useGeolocation";
+import { useParkingStore } from "@/stores/parking";
 import { useStopStore } from "@/stores/stop";
 
-const NEARBY_COOLDOWN_MS = 60000;
+const COOLDOWN_MS = 60000;
 
 const stopStore = useStopStore();
+const parkingStore = useParkingStore();
 const router = useRouter();
 const { coords, status, request } = useGeolocation();
 
@@ -23,12 +25,18 @@ let tickTimer: ReturnType<typeof setInterval> | undefined;
 
 const cooldownRemainingSec = computed(() => {
   if (stopStore.lastNearbyFetchAt === null) return 0;
-  const remaining = NEARBY_COOLDOWN_MS - (nowTick.value - stopStore.lastNearbyFetchAt);
+  const remaining = COOLDOWN_MS - (nowTick.value - stopStore.lastNearbyFetchAt);
+  return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+});
+
+const parkingCooldownRemainingSec = computed(() => {
+  if (parkingStore.lastFetchAt === null) return 0;
+  const remaining = COOLDOWN_MS - (nowTick.value - parkingStore.lastFetchAt);
   return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
 });
 
 onMounted(() => {
-  // 不在這裡自動抓取：附近站牌只在使用者按下「使用目前位置」時才會打 API，避免每次進頁面就消耗 TDX 額度
+  // 不在這裡自動抓取：附近站牌／附近停車場都只在使用者按按鈕時才會打 API，避免一進頁面就消耗 TDX 額度
   tickTimer = setInterval(() => (nowTick.value = Date.now()), 1000);
 });
 
@@ -45,11 +53,28 @@ watch(coords, (value) => {
   if (value) stopStore.loadNearby(value.lat, value.lng);
 });
 
+function onSearchParking() {
+  if (parkingCooldownRemainingSec.value > 0) return;
+  parkingStore.loadNearby(center.value.lat, center.value.lng);
+}
+
 function openStop(id: string) {
   const stop = stopStore.nearbyStops.find((s) => s.id === id);
   if (!stop) return;
   if (stop.type === "metro") router.push({ path: "/metro", query: { to: stop.name } });
   else router.push({ path: "/stop/" + encodeURIComponent(stop.name) });
+}
+
+function spacesLabel(availableSpaces: number | null, totalSpaces: number | null): string {
+  if (availableSpaces === null || totalSpaces === null) return "無即時資料";
+  return `剩 ${availableSpaces} / ${totalSpaces} 位`;
+}
+
+function spacesClass(availableSpaces: number | null): string {
+  if (availableSpaces === null) return "spaces-unknown";
+  if (availableSpaces === 0) return "spaces-full";
+  if (availableSpaces <= 10) return "spaces-low";
+  return "spaces-ok";
 }
 </script>
 
@@ -86,6 +111,42 @@ function openStop(id: string) {
         <span v-else class="arrow">›</span>
       </div>
     </div>
+
+    <div class="section-title">附近停車場</div>
+    <button
+      class="btn btn-outline locate-btn"
+      type="button"
+      :disabled="parkingCooldownRemainingSec > 0"
+      @click="onSearchParking"
+    >
+      🅿️
+      {{
+        parkingStore.loading
+          ? "查詢中…"
+          : parkingCooldownRemainingSec > 0
+            ? `請稍候 ${parkingCooldownRemainingSec} 秒再更新`
+            : "查詢附近停車場"
+      }}
+    </button>
+    <div v-if="parkingCooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次</div>
+
+    <div v-if="parkingStore.error" class="error-hint">{{ parkingStore.error }}</div>
+    <div v-else class="card">
+      <div v-if="parkingStore.lastFetchAt === null" class="empty-hint">按上方按鈕查詢附近停車場剩餘車位</div>
+      <div v-else-if="parkingStore.lots.length === 0" class="empty-hint">附近沒有找到停車場</div>
+      <div v-for="lot in parkingStore.lots" :key="lot.id" class="list-item parking-item">
+        <div class="parking-info">
+          <div class="parking-name">{{ lot.name }}</div>
+          <div class="parking-address">{{ lot.address }}</div>
+        </div>
+        <div class="parking-meta">
+          <span class="spaces" :class="spacesClass(lot.available_spaces)">
+            {{ spacesLabel(lot.available_spaces, lot.total_spaces) }}
+          </span>
+          <span v-if="lot.distance_meters !== null" class="distance">{{ lot.distance_meters }} 公尺</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,5 +176,57 @@ function openStop(id: string) {
 
 .arrow {
   color: var(--color-text-muted);
+}
+
+.parking-item {
+  align-items: flex-start;
+  cursor: default;
+}
+
+.parking-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.parking-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.parking-address {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.parking-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.spaces {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.spaces-ok {
+  color: var(--color-success);
+}
+
+.spaces-low {
+  color: var(--color-warning);
+}
+
+.spaces-full {
+  color: var(--color-danger);
+}
+
+.spaces-unknown {
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 </style>

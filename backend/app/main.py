@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.db.database import Base, SessionLocal, engine
 from app.db.seed import seed_if_empty
-from app.routers import bus, metro, stop
+from app.routers import bus, metro, parking, stop
 from app.services.tdx_bus_sync import sync_bus_routes_if_needed
 
 settings = get_settings()
@@ -41,6 +41,7 @@ app.add_middleware(
 app.include_router(metro.router)
 app.include_router(bus.router)
 app.include_router(stop.router)
+app.include_router(parking.router)
 
 
 @app.get("/api/health")

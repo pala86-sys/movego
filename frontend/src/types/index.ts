@@ -85,6 +85,18 @@ export interface NearbyStop {
   distance_meters: number | null;
 }
 
+export interface ParkingLot {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  total_spaces: number | null;
+  available_spaces: number | null;
+  status: string;
+  distance_meters: number | null;
+}
+
 export type FavoriteType = "metro-station" | "bus-route" | "stop";
 
 export interface FavoriteItem {

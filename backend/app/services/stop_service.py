@@ -1,6 +1,5 @@
 """站牌搜尋與附近站牌邏輯。"""
 import asyncio
-import math
 from functools import lru_cache
 
 from app.core.config import get_settings
@@ -9,19 +8,11 @@ from app.db.models import NearbyStopModel
 from app.schemas.stop import NearbyStop, RouteAtStop, StopSearchResult
 from app.services import tdx_bus_service, tdx_metro_service
 from app.services.bus_service import _load_raw_routes
+from app.services.geo import haversine_meters
 from app.services.realtime_service import mock_arrival_status
 
 # 找不到定位權限時，預設以台北車站為中心搜尋附近站牌
 DEFAULT_CENTER = (25.0478, 121.5170)
-
-
-def _haversine_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    r = 6371000
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lng2 - lng1)
-    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * r * math.asin(math.sqrt(a))
 
 
 @lru_cache
@@ -92,7 +83,7 @@ async def get_nearby_stops(lat: float | None = None, lng: float | None = None) -
 
     combined = bus_stops + metro_stations
     for item in combined:
-        item["distance_meters"] = round(_haversine_meters(center_lat, center_lng, item["lat"], item["lng"]))
+        item["distance_meters"] = round(haversine_meters(center_lat, center_lng, item["lat"], item["lng"]))
     combined.sort(key=lambda item: item["distance_meters"])
 
     return [
