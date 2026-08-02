@@ -69,7 +69,11 @@ async def search_stations(keyword: str) -> list[dict]:
 
 
 async def _build_graph():
-    """節點為 (line_id, station_name)，同線相鄰站相連，不同線同站名可轉乘。"""
+    """節點為 (line_id, station_name)，同線相鄰站相連，不同線同站名可轉乘。
+
+    邊的權重直接是「分鐘數」（同站相鄰一站 = MINUTES_PER_STOP，轉乘一次 = MINUTES_PER_TRANSFER），
+    這樣 Dijkstra 找到的最短路徑就是預估時間最短的路徑，不再是先比轉乘次數、同分才比站數。
+    """
     lines = await _load_lines()
     graph: dict[tuple[str, str], list[tuple[tuple[str, str], int, bool]]] = {}
     station_to_nodes: dict[str, list[tuple[str, str]]] = {}
@@ -82,20 +86,20 @@ async def _build_graph():
             station_to_nodes.setdefault(name, []).append(node)
             if i > 0:
                 prev_node = (line.id, names[i - 1])
-                graph[node].append((prev_node, 1, False))
-                graph.setdefault(prev_node, []).append((node, 1, False))
+                graph[node].append((prev_node, MINUTES_PER_STOP, False))
+                graph.setdefault(prev_node, []).append((node, MINUTES_PER_STOP, False))
 
     for name, nodes in station_to_nodes.items():
         for i in range(len(nodes)):
             for j in range(len(nodes)):
                 if i != j:
-                    graph[nodes[i]].append((nodes[j], 0, True))
+                    graph[nodes[i]].append((nodes[j], MINUTES_PER_TRANSFER, True))
 
     return graph, station_to_nodes
 
 
 async def plan_route(from_station: str, to_station: str) -> MetroRoutePlan | None:
-    """以最少轉乘、其次最少站數為原則規劃路線。"""
+    """以預估時間最短為原則規劃路線（邊權重已是分鐘數，Dijkstra 直接找時間最短路徑）。"""
     graph, station_to_nodes = await _build_graph()
 
     if from_station not in station_to_nodes or to_station not in station_to_nodes:
@@ -106,7 +110,6 @@ async def plan_route(from_station: str, to_station: str) -> MetroRoutePlan | Non
     starts = station_to_nodes[from_station]
     targets = set(station_to_nodes[to_station])
 
-    # 成本以 (轉乘次數, 站數) 排序，用 transfers*10000 + stops 編碼成單一整數
     dist: dict[tuple[str, str], int] = {}
     prev: dict[tuple[str, str], tuple[tuple[str, str], bool] | None] = {}
     pq: list[tuple[int, tuple[str, str]]] = []
@@ -127,9 +130,8 @@ async def plan_route(from_station: str, to_station: str) -> MetroRoutePlan | Non
             best_target = node
             best_cost = cost
             break
-        for neighbor, stop_cost, is_transfer in graph.get(node, []):
-            step = 10000 if is_transfer else stop_cost
-            new_cost = cost + step
+        for neighbor, minutes, is_transfer in graph.get(node, []):
+            new_cost = cost + minutes
             if new_cost < dist.get(neighbor, float("inf")):
                 dist[neighbor] = new_cost
                 prev[neighbor] = (node, is_transfer)
