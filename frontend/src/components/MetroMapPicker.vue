@@ -25,7 +25,7 @@ interface LineGroup {
   branches: MetroLine[];
 }
 
-const GROUP_ORDER = ["R", "G", "BL", "O", "BR", "Y"];
+const GROUP_ORDER = ["BR", "BL", "G", "R", "O", "Y"];
 
 const groups = computed<LineGroup[]>(() => {
   const byId = new Map(metroStore.lines.map((line) => [line.id, line]));
