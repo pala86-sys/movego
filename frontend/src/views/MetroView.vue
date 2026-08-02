@@ -7,6 +7,7 @@ import FavoriteStar from "@/components/FavoriteStar.vue";
 import MetroMapPicker from "@/components/MetroMapPicker.vue";
 import TopBar from "@/components/TopBar.vue";
 import { debounce } from "@/composables/useDebouncedRef";
+import { computeCustomRouteStats } from "@/composables/useCustomRouteStats";
 import { useCustomRoutesStore } from "@/stores/customRoutes";
 import { useMetroStore } from "@/stores/metro";
 import { useRecentQueriesStore } from "@/stores/recentQueries";
@@ -33,6 +34,9 @@ const matchingCustomRoutes = computed(() =>
   )
 );
 const selectedCustomRoute = computed(() => matchingCustomRoutes.value.find((r) => r.id === selectedView.value) ?? null);
+const selectedCustomRouteStats = computed(() =>
+  selectedCustomRoute.value ? computeCustomRouteStats(selectedCustomRoute.value.legs, metroStore.lines) : null
+);
 
 function setStation(role: "from" | "to", name: string) {
   if (role === "from") {
@@ -214,8 +218,22 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-else-if="selectedCustomRoute" class="card result-card">
-        <div class="custom-route-hint">這是你自己存的自訂路線，站數／時間未統計</div>
+      <div v-else-if="selectedCustomRoute && selectedCustomRouteStats" class="card result-card">
+        <div class="summary-row">
+          <div class="summary-item">
+            <div class="summary-value">{{ selectedCustomRouteStats.estimatedMinutes }} 分</div>
+            <div class="summary-label">預估時間</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ selectedCustomRouteStats.transferCount }} 次</div>
+            <div class="summary-label">轉乘</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ selectedCustomRouteStats.totalStopCount }} 站</div>
+            <div class="summary-label">共經過</div>
+          </div>
+        </div>
+        <div class="custom-route-hint">🧭 自訂路線，時間為推估值</div>
         <div v-for="(leg, index) in selectedCustomRoute.legs" :key="index" class="leg">
           <div class="leg-line" :style="{ background: leg.lineColor }">{{ leg.lineName }}</div>
           <div class="leg-body">
