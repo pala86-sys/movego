@@ -104,7 +104,7 @@ function spacesClass(availableSpaces: number | null): string {
           ? "定位中…"
           : cooldownRemainingSec > 0
             ? `請稍候 ${cooldownRemainingSec} 秒再更新`
-            : "使用目前位置"
+            : "查詢附近站牌"
       }}
     </button>
     <div v-if="status === 'denied'" class="hint-text">無法取得定位權限，顯示台北車站周邊做為預設位置</div>
@@ -118,7 +118,7 @@ function spacesClass(availableSpaces: number | null): string {
     <div class="section-title">附近站牌清單{{ isRealData ? "" : stopStore.lastNearbyFetchAt ? "（模擬資料）" : "" }}</div>
     <div v-if="stopStore.error" class="error-hint">{{ stopStore.error }}</div>
     <div v-else class="card">
-      <div v-if="stopStore.lastNearbyFetchAt === null" class="empty-hint">按上方「使用目前位置」開始查詢附近站牌</div>
+      <div v-if="stopStore.lastNearbyFetchAt === null" class="empty-hint">按上方「查詢附近站牌」開始查詢</div>
       <div v-else-if="stopStore.nearbyStops.length === 0" class="empty-hint">附近沒有找到站牌</div>
       <div v-for="stop in stopStore.nearbyStops" :key="stop.id" class="list-item" @click="openStop(stop.id)">
         <span>{{ stop.type === "metro" ? "🚇" : "🚌" }} {{ stop.name }}</span>
