@@ -13,7 +13,6 @@ const router = useRouter();
 const metroStore = useMetroStore();
 const customRoutesStore = useCustomRoutesStore();
 
-const routeName = ref("");
 const legs = ref<CustomRouteLeg[]>([]);
 
 const selectedLineId = ref("");
@@ -22,12 +21,17 @@ const alightStation = ref("");
 
 const selectedLine = computed(() => metroStore.lines.find((l) => l.id === selectedLineId.value) ?? null);
 
+// 路線名稱不用手打，直接從加入的段路自動算出「起點到終點」，跟自訂路線比對邏輯（legs[0].from / legs.at(-1).to）保持一致
+const routeName = computed(() => {
+  if (legs.value.length === 0) return "";
+  return `${legs.value[0].from}到${legs.value[legs.value.length - 1].to}`;
+});
+
 onMounted(() => {
   metroStore.loadLines();
   if (props.id) {
     const existing = customRoutesStore.byId(props.id);
     if (existing) {
-      routeName.value = existing.name;
       legs.value = [...existing.legs];
     }
   }
@@ -71,8 +75,8 @@ const canAddLeg = computed(() => !!selectedLine.value && !!boardStation.value &&
     <button class="btn btn-outline back-btn" type="button" @click="router.push('/favorites')">‹ 返回收藏</button>
 
     <div class="card">
-      <label class="field-label">路線名稱</label>
-      <input v-model="routeName" class="input" placeholder="例如：六張犁到三重（走東門轉乘）" />
+      <label class="field-label">路線名稱（自動依起點終點產生）</label>
+      <div class="route-name-display">{{ routeName || "請先在下方加入至少一段路線" }}</div>
     </div>
 
     <div class="section-title">已加入的段路</div>
@@ -129,6 +133,17 @@ const canAddLeg = computed(() => !!selectedLine.value && !!boardStation.value &&
   color: var(--color-text-muted);
   margin-bottom: 6px;
   font-weight: 600;
+}
+
+.route-name-display {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--color-bg);
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .leg-row {
