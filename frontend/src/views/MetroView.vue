@@ -78,13 +78,23 @@ async function search() {
   if (!fromStation.value || !toStation.value) return;
   await metroStore.planRoute(fromStation.value, toStation.value);
   if (metroStore.routePlan) {
-    recentStore.add("metro-station", toStation.value, `${fromStation.value} → ${toStation.value}`);
+    recentStore.add(
+      "metro-station",
+      toStation.value,
+      `${fromStation.value} → ${toStation.value}`,
+      fromStation.value
+    );
   }
 }
 
 onMounted(() => {
   metroStore.loadLines();
+  const prefillFrom = route.query.from as string | undefined;
   const prefillTo = route.query.to as string | undefined;
+  if (prefillFrom) {
+    fromInput.value = prefillFrom;
+    fromStation.value = prefillFrom;
+  }
   if (prefillTo) {
     toInput.value = prefillTo;
     toStation.value = prefillTo;

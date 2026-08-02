@@ -45,8 +45,13 @@ const favoritePreview = computed(() => favoritesStore.items.slice(0, 6));
 const recentPreview = computed(() => recentStore.items.slice(0, 6));
 
 function openRecent(item: (typeof recentStore.items)[number]) {
-  if (item.type === "metro-station") goToStation(item.key);
-  else if (item.type === "stop") goToStop(item.key);
+  if (item.type === "metro-station") {
+    if (item.fromKey) {
+      router.push({ path: "/metro", query: { from: item.fromKey, to: item.key } });
+    } else {
+      goToStation(item.key);
+    }
+  } else if (item.type === "stop") goToStop(item.key);
   else router.push("/bus");
 }
 </script>

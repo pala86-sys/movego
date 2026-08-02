@@ -12,9 +12,9 @@ export const useRecentQueriesStore = defineStore("recentQueries", {
     items: loadFromStorage<RecentQuery[]>(STORAGE_KEY, [])
   }),
   actions: {
-    add(type: FavoriteType, key: string, label: string) {
+    add(type: FavoriteType, key: string, label: string, fromKey?: string) {
       const filtered = this.items.filter((item) => !(item.type === type && item.key === key));
-      filtered.unshift({ type, key, label, queriedAt: Date.now() });
+      filtered.unshift({ type, key, label, queriedAt: Date.now(), fromKey });
       this.items = filtered.slice(0, MAX_ITEMS);
       saveToStorage(STORAGE_KEY, this.items);
     },

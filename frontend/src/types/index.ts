@@ -99,4 +99,6 @@ export interface RecentQuery {
   key: string;
   label: string;
   queriedAt: number;
+  /** 捷運路線查詢時的起點站名；只有 type 為 metro-station 且來自完整路線查詢時才會有值 */
+  fromKey?: string;
 }
