@@ -177,14 +177,14 @@ onMounted(() => {
           系統安排
         </button>
         <button
-          v-for="r in matchingCustomRoutes"
+          v-for="(r, i) in matchingCustomRoutes"
           :key="r.id"
           class="view-tab"
           :class="{ active: selectedView === r.id }"
           type="button"
           @click="selectedView = r.id"
         >
-          🧭 {{ r.name }}
+          🧭 自訂安排{{ matchingCustomRoutes.length > 1 ? i + 1 : "" }}
         </button>
       </div>
 
@@ -233,7 +233,7 @@ onMounted(() => {
             <div class="summary-label">共經過</div>
           </div>
         </div>
-        <div class="custom-route-hint">🧭 自訂路線，時間為推估值</div>
+        <div class="custom-route-hint">🧭 {{ selectedCustomRoute.name }}（自訂路線，時間為推估值）</div>
         <div v-for="(leg, index) in selectedCustomRoute.legs" :key="index" class="leg">
           <div class="leg-line" :style="{ background: leg.lineColor }">{{ leg.lineName }}</div>
           <div class="leg-body">
