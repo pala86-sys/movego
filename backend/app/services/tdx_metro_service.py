@@ -30,11 +30,33 @@ LINE_NAMES = {
     "Y": "環狀線",
 }
 
+# TDX StationOfLine 對於有分岔的路線（目前已知只有中和新蘆線），Sequence 編號會跳號
+# （例如 1~21 是主線＋迴龍支線，50~54 是另一條蘆洲支線），代表這兩段不是實際相鄰的站，
+# 但站陣列裡的 Sequence 跳號段落並不會告訴我們該接回主線的哪一站，所以用這張表手動標記
+# 「跳號後那一段的第一站」實際上應該接在主線的哪一站之後。
+KNOWN_BRANCH_ATTACHMENTS: dict[tuple[str, str], str] = {
+    ("O", "三重國小"): "大橋頭",
+}
+
 
 def _zh(field: dict | None) -> str:
     if not field:
         return ""
     return field.get("Zh_tw") or field.get("Zh_TW") or ""
+
+
+def _split_into_contiguous_segments(stations_raw: list[dict]) -> list[list[dict]]:
+    """依 Sequence 是否連續切段，避免把分岔路線裡不相鄰的站誤判成相鄰。"""
+    ordered = sorted(stations_raw, key=lambda s: s.get("Sequence", 0))
+    segments: list[list[dict]] = []
+    prev_seq: int | None = None
+    for station in ordered:
+        seq = station.get("Sequence", 0)
+        if prev_seq is None or seq != prev_seq + 1:
+            segments.append([])
+        segments[-1].append(station)
+        prev_seq = seq
+    return segments
 
 
 async def fetch_lines_tdx() -> list[MetroLine]:
@@ -43,23 +65,42 @@ async def fetch_lines_tdx() -> list[MetroLine]:
         data = await tdx_get(f"/v2/Rail/Metro/StationOfLine/{rail_system}")
         for entry in data if isinstance(data, list) else []:
             line_id = entry.get("LineID", "")
-            # 這個端點不含中文路線名稱，只有 LineID/LineNo，名稱另外查表
-            stations_raw = sorted(entry.get("Stations", []), key=lambda s: s.get("Sequence", 0))
-            stations = [
+            line_name = LINE_NAMES.get(line_id, line_id)
+            line_color = LINE_COLORS.get(line_id, DEFAULT_COLOR)
+
+            segments = _split_into_contiguous_segments(entry.get("Stations", []))
+            segments = [seg for seg in segments if seg]
+            if not segments:
+                continue
+
+            main_stations = [
                 MetroStation(id=s.get("StationID", ""), name=_zh(s.get("StationName")))
-                for s in stations_raw
+                for s in segments[0]
                 if _zh(s.get("StationName"))
             ]
-            if not stations:
+            if not main_stations:
                 continue
-            lines.append(
-                MetroLine(
-                    id=line_id,
-                    name=LINE_NAMES.get(line_id, line_id),
-                    color=LINE_COLORS.get(line_id, DEFAULT_COLOR),
-                    stations=stations,
+            lines.append(MetroLine(id=line_id, name=line_name, color=line_color, stations=main_stations))
+
+            for i, segment in enumerate(segments[1:], start=1):
+                branch_names = [
+                    MetroStation(id=s.get("StationID", ""), name=_zh(s.get("StationName")))
+                    for s in segment
+                    if _zh(s.get("StationName"))
+                ]
+                if not branch_names:
+                    continue
+                attach_to = KNOWN_BRANCH_ATTACHMENTS.get((line_id, branch_names[0].name))
+                if attach_to:
+                    branch_names.insert(0, MetroStation(id="", name=attach_to))
+                lines.append(
+                    MetroLine(
+                        id=f"{line_id}-seg{i}",
+                        name=f"{line_name}（支線）",
+                        color=line_color,
+                        stations=branch_names,
+                    )
                 )
-            )
     return lines
 
 
