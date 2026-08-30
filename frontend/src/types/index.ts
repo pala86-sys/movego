@@ -33,6 +33,11 @@ export interface MetroRoutePlan {
   estimated_minutes: number;
 }
 
+export interface MetroLiveboardEntry {
+  destination: string;
+  status: string;
+}
+
 export interface BusStopArrival {
   stop_name: string;
   status: string;

@@ -6,18 +6,47 @@
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
-export class ApiError extends Error {}
+export class ApiError extends Error {
+  /** HTTP 狀態碼；網路或解析失敗時為 0。 */
+  readonly status: number;
 
-async function request<T>(path: string): Promise<T> {
+  constructor(message: string, status = 0) {
+    super(message);
+    this.status = status;
+  }
+
+  /** 後端明確回「查無此資源」（404），而不是暫時性的服務中斷。 */
+  get isNotFound(): boolean {
+    return this.status === 404;
+  }
+}
+
+/** 請求被 AbortController 取消時丟出；呼叫端（多半是搜尋輸入）通常直接忽略即可。 */
+export class RequestAbortedError extends ApiError {
+  constructor() {
+    super("已取消", 0);
+  }
+}
+
+interface RequestOptions {
+  /** 傳入 AbortSignal 可在下一次輸入時取消尚未完成的搜尋請求。 */
+  signal?: AbortSignal;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${BASE_URL}${path}`);
-  } catch {
+    response = await fetch(`${BASE_URL}${path}`, { signal: options.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new RequestAbortedError();
+    }
     throw new ApiError("目前無法取得即時資料");
   }
 
   if (!response.ok) {
-    throw new ApiError("目前無法取得即時資料");
+    const message = response.status === 404 ? "查無符合的資料" : "目前無法取得即時資料";
+    throw new ApiError(message, response.status);
   }
 
   try {

@@ -1,33 +1,21 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 
-import { fetchMetroLiveboard, type MetroLiveboardEntry } from "@/api/metro";
-import { ApiError } from "@/api/client";
 import FavoriteStar from "@/components/FavoriteStar.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import TopBar from "@/components/TopBar.vue";
+import { useMetroStore } from "@/stores/metro";
 
 const props = defineProps<{ name: string }>();
 const router = useRouter();
+const metroStore = useMetroStore();
 
-const entries = ref<MetroLiveboardEntry[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
+const entries = computed(() => metroStore.liveboard);
+const loading = computed(() => metroStore.liveboardLoading);
+const error = computed(() => metroStore.liveboardError);
 
-async function load() {
-  loading.value = true;
-  error.value = null;
-  try {
-    entries.value = await fetchMetroLiveboard(props.name);
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "目前無法取得即時資料";
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(load);
+onMounted(() => metroStore.loadLiveboard(props.name));
 </script>
 
 <template>

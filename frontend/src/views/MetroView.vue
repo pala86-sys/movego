@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
-import { searchMetroStations } from "@/api/metro";
 import FavoriteStar from "@/components/FavoriteStar.vue";
 import MetroMapPicker from "@/components/MetroMapPicker.vue";
 import TopBar from "@/components/TopBar.vue";
@@ -57,13 +56,9 @@ const runSuggest = debounce(async (value: string, field: "from" | "to") => {
     return;
   }
   const seq = ++requestSeq;
-  try {
-    const result = await searchMetroStations(value);
-    if (seq === requestSeq && activeField.value === field) {
-      suggestions.value = result;
-    }
-  } catch {
-    // 建議清單查詢失敗時安靜略過，不影響輸入
+  const result = await metroStore.fetchStationSuggestions(value);
+  if (seq === requestSeq && activeField.value === field) {
+    suggestions.value = result;
   }
 }, 250);
 
