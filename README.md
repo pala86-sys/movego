@@ -1,7 +1,7 @@
 # 大台北即時交通查詢 PWA
 
 手機優先的大台北捷運／公車／站牌查詢工具，可安裝成 PWA（加入 Android／iPhone 主畫面）。
-**第一版使用模擬到站資料，尚未串接 TDX 即時資料。**
+即時到站資料由 TDX 提供（後端 `USE_TDX=true` 時生效）；未設定金鑰時自動退回內建模擬資料。
 
 ## 專案資料夾架構
 
@@ -99,7 +99,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 第一次啟動時會自動建立 `movego.db`（SQLite）並匯入模擬資料。
 確認後端正常：瀏覽 http://127.0.0.1:8000/api/health 應回傳 `{"status":"ok","use_tdx":false}`。
 
-若要之後接上真正的 TDX API，只需在 `backend/.env` 填入 `TDX_CLIENT_ID`／`TDX_CLIENT_SECRET` 並將 `USE_TDX` 改為 `true`（第一版程式碼尚未讀取此開關，僅預留欄位）。**`.env` 絕對不要提交到版本控制。**
+要接上真正的 TDX API，在 `backend/.env` 填入 `TDX_CLIENT_ID`／`TDX_CLIENT_SECRET` 並將 `USE_TDX` 改為 `true`，重啟後端即可（`/api/health` 會回 `"use_tdx":true`）。**`.env` 已被 `.gitignore` 排除，金鑰不會進版本控制。**
 
 ### 2. 啟動前端
 
