@@ -2,7 +2,7 @@
 import asyncio
 from functools import lru_cache
 
-from app.core.config import get_settings
+from app.core.config import tdx_enabled
 from app.db.database import SessionLocal
 from app.db.models import NearbyStopModel
 from app.schemas.stop import NearbyStop, RouteAtStop, StopSearchResult
@@ -71,7 +71,7 @@ def search_stop(keyword: str) -> list[StopSearchResult]:
 
 async def get_nearby_stops(lat: float | None = None, lng: float | None = None) -> list[NearbyStop]:
     """依座標回傳附近站牌；USE_TDX=true 時為真實資料並依距離排序，否則回傳固定模擬清單。"""
-    if not get_settings().use_tdx:
+    if not tdx_enabled():
         return _get_nearby_stops_mock()
 
     center_lat, center_lng = (lat, lng) if lat is not None and lng is not None else DEFAULT_CENTER

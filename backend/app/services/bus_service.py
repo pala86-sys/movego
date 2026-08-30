@@ -9,7 +9,7 @@ from functools import lru_cache
 
 from sqlalchemy.orm import selectinload
 
-from app.core.config import get_settings
+from app.core.config import tdx_enabled
 from app.db.database import SessionLocal
 from app.db.models import BusRouteModel
 from app.schemas.bus import BusDirection, BusRoute, BusRouteSummary, BusStopArrival
@@ -97,7 +97,7 @@ async def get_route_detail(route_id: str) -> BusRoute | None:
         return None
 
     eta_by_uid: dict[str, dict] | None = None
-    if get_settings().use_tdx:
+    if tdx_enabled():
         eta_by_uid = await tdx_bus_service.fetch_eta_by_stop_uid(matched["city"], matched["name"])
 
     return BusRoute(

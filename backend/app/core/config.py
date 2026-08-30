@@ -22,3 +22,13 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def tdx_enabled() -> bool:
+    """是否啟用真實 TDX 串接。所有 service 一律透過這個函式判斷，不要各自讀 settings。
+
+    未啟用時各功能的行為（刻意不一致，取決於有沒有模擬資料可退）：
+    - 捷運／公車路線、站牌搜尋、附近站牌：回退到內建模擬資料，功能照常可用。
+    - 捷運即時看板、附近停車場：回傳 None，代表「此功能需要 TDX，現在沒有」。
+    """
+    return get_settings().use_tdx
