@@ -27,7 +27,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="大台北即時交通查詢 API",
-    description="捷運、公車、站牌查詢服務（第一版使用模擬到站資料，尚未串接 TDX）",
+    description="捷運、公車、站牌與到站查詢服務；即時資料由 TDX 提供（USE_TDX=true 時），"
+    "否則回傳內建模擬資料。",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -35,8 +36,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
+    # 前端只用不帶 cookie 的 fetch，不需要 credentials
+    allow_methods=["GET"],
     allow_headers=["*"],
 )
 
