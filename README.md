@@ -144,6 +144,17 @@ npm run preview -- --host
 
 `npm run build` 會產生含 Service Worker 的 `dist/`，可用 `npm run preview` 在區網測試離線快取行為，或部署到任何靜態主機（後端 API 需另外部署並設定正確的 CORS）。
 
+## 執行後端測試
+
+```bash
+cd backend
+.venv\Scripts\activate
+pip install -r requirements-dev.txt
+pytest
+```
+
+測試只涵蓋純邏輯（捷運 Dijkstra 路線規劃、TDX 回傳資料轉換），不會連資料庫或打 TDX。
+
 ## TDX 即時資料串接
 
 專案已串接 TDX 公車與捷運 API（`USE_TDX=true` 時生效），細節：
