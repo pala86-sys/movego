@@ -144,6 +144,8 @@ npm run preview -- --host
 
 `npm run build` 會產生含 Service Worker 的 `dist/`，可用 `npm run preview` 在區網測試離線快取行為，或部署到任何靜態主機（後端 API 需另外部署並設定正確的 CORS）。
 
+前端程式碼檢查（非建置必要步驟）：`npm run lint` 跑 ESLint（含「`views/` 不得直接 import `@/api`」的分層檢查），`npm run format` 用 Prettier 統一排版。
+
 ## 執行後端測試
 
 ```bash
