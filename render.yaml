@@ -4,8 +4,11 @@
 # 部署後必做的事：
 # 1. 到 movego-backend 服務的 Environment 分頁，手動填入 TDX_CLIENT_ID / TDX_CLIENT_SECRET
 #    （這裡故意不寫在檔案裡，避免金鑰進版本控制）。
-# 2. 確認下面兩個服務實際被分配到的網址，若與這裡預設的 movego-backend / movego-frontend
-#    不同（服務名稱被佔用時 Render 會自動改名），要回來更新彼此參照的網址。
+# 2. 確認下面兩個服務實際被分配到的網址，若與這裡預設的不同（服務名稱被佔用時 Render
+#    會自動加後綴改名），要回來更新彼此參照的網址。
+#    目前實際網址：
+#      後端 https://movego-backend-oqk5.onrender.com （movego-backend 已被他人佔用）
+#      前端 https://movego-frontend.onrender.com
 
 services:
   - type: web
@@ -37,7 +40,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://movego-backend.onrender.com/api
+        value: https://movego-backend-oqk5.onrender.com/api
     routes:
       - type: rewrite
         source: /*
