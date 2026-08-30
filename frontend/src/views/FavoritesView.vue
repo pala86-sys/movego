@@ -53,7 +53,14 @@ function removeCustomRoute(id: string, event: Event) {
         @click="openCustomRoute(route.id)"
       >
         <span>🧭 {{ route.name }}</span>
-        <button class="remove-btn" type="button" @click="removeCustomRoute(route.id, $event)" aria-label="刪除自訂路線">✕</button>
+        <button
+          class="remove-btn"
+          type="button"
+          @click="removeCustomRoute(route.id, $event)"
+          aria-label="刪除自訂路線"
+        >
+          ✕
+        </button>
       </div>
       <router-link to="/custom-routes/new" class="see-more">＋ 新增自訂路線</router-link>
     </div>
@@ -68,9 +75,21 @@ function removeCustomRoute(id: string, event: Event) {
         <template v-if="favoritesStore.byType(group.type).length > 0">
           <div class="section-title">{{ group.label }}</div>
           <div class="card">
-            <div v-for="item in favoritesStore.byType(group.type)" :key="item.key" class="list-item" @click="open(item)">
+            <div
+              v-for="item in favoritesStore.byType(group.type)"
+              :key="item.key"
+              class="list-item"
+              @click="open(item)"
+            >
               <span>⭐ {{ item.label }}</span>
-              <button class="remove-btn" type="button" @click="remove(item, $event)" aria-label="移除收藏">✕</button>
+              <button
+                class="remove-btn"
+                type="button"
+                @click="remove(item, $event)"
+                aria-label="移除收藏"
+              >
+                ✕
+              </button>
             </div>
           </div>
         </template>

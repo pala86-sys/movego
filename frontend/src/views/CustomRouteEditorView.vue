@@ -19,7 +19,9 @@ const selectedLineId = ref("");
 const boardStation = ref("");
 const alightStation = ref("");
 
-const selectedLine = computed(() => metroStore.lines.find((l) => l.id === selectedLineId.value) ?? null);
+const selectedLine = computed(
+  () => metroStore.lines.find((l) => l.id === selectedLineId.value) ?? null
+);
 
 // 路線名稱不用手打，直接從加入的段路自動算出「起點到終點」，跟自訂路線比對邏輯（legs[0].from / legs.at(-1).to）保持一致
 const routeName = computed(() => {
@@ -66,13 +68,21 @@ function save() {
 }
 
 const canSave = computed(() => routeName.value.trim().length > 0 && legs.value.length > 0);
-const canAddLeg = computed(() => !!selectedLine.value && !!boardStation.value && !!alightStation.value && boardStation.value !== alightStation.value);
+const canAddLeg = computed(
+  () =>
+    !!selectedLine.value &&
+    !!boardStation.value &&
+    !!alightStation.value &&
+    boardStation.value !== alightStation.value
+);
 </script>
 
 <template>
   <div class="page">
     <TopBar :title="id ? '編輯自訂路線' : '新增自訂路線'" />
-    <button class="btn btn-outline back-btn" type="button" @click="router.push('/favorites')">‹ 返回收藏</button>
+    <button class="btn btn-outline back-btn" type="button" @click="router.push('/favorites')">
+      ‹ 返回收藏
+    </button>
 
     <div class="card">
       <label class="field-label">路線名稱（自動依起點終點產生）</label>
@@ -85,38 +95,65 @@ const canAddLeg = computed(() => !!selectedLine.value && !!boardStation.value &&
       <div v-for="(leg, index) in legs" :key="index" class="leg-row">
         <div class="leg-line" :style="{ background: leg.lineColor }">{{ leg.lineName }}</div>
         <div class="leg-text">{{ leg.from }} → {{ leg.to }}</div>
-        <button class="remove-btn" type="button" aria-label="移除這一段" @click="removeLeg(index)">✕</button>
+        <button class="remove-btn" type="button" aria-label="移除這一段" @click="removeLeg(index)">
+          ✕
+        </button>
       </div>
     </div>
 
     <div class="section-title">加入一段</div>
     <div class="card">
       <label class="field-label">路線</label>
-      <select v-model="selectedLineId" class="input" @change="boardStation = ''; alightStation = ''">
+      <select
+        v-model="selectedLineId"
+        class="input"
+        @change="
+          boardStation = '';
+          alightStation = '';
+        "
+      >
         <option value="" disabled>請選擇路線</option>
-        <option v-for="line in metroStore.lines" :key="line.id" :value="line.id">{{ line.name }}</option>
+        <option v-for="line in metroStore.lines" :key="line.id" :value="line.id">
+          {{ line.name }}
+        </option>
       </select>
 
       <template v-if="selectedLine">
         <label class="field-label" style="margin-top: 12px">上車站</label>
         <select v-model="boardStation" class="input">
           <option value="" disabled>請選擇上車站</option>
-          <option v-for="s in selectedLine.stations" :key="s.id" :value="s.name">{{ s.name }}</option>
+          <option v-for="s in selectedLine.stations" :key="s.id" :value="s.name">
+            {{ s.name }}
+          </option>
         </select>
 
         <label class="field-label" style="margin-top: 12px">下車／轉乘站</label>
         <select v-model="alightStation" class="input">
           <option value="" disabled>請選擇下車站</option>
-          <option v-for="s in selectedLine.stations" :key="s.id" :value="s.name">{{ s.name }}</option>
+          <option v-for="s in selectedLine.stations" :key="s.id" :value="s.name">
+            {{ s.name }}
+          </option>
         </select>
       </template>
 
-      <button class="btn" style="width: 100%; margin-top: 12px" type="button" :disabled="!canAddLeg" @click="addLeg">
+      <button
+        class="btn"
+        style="width: 100%; margin-top: 12px"
+        type="button"
+        :disabled="!canAddLeg"
+        @click="addLeg"
+      >
         ＋ 加入這一段
       </button>
     </div>
 
-    <button class="btn" style="width: 100%; margin-top: 16px" type="button" :disabled="!canSave" @click="save">
+    <button
+      class="btn"
+      style="width: 100%; margin-top: 16px"
+      type="button"
+      :disabled="!canSave"
+      @click="save"
+    >
       儲存路線
     </button>
   </div>

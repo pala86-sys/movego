@@ -33,7 +33,11 @@ const result = () => stopStore.searchResults.find((r) => r.stop_name === props.n
         <FavoriteStar type="stop" :item-key="name" :label="name" />
       </div>
       <div class="section-title" style="margin-top: 0">經過路線</div>
-      <div v-for="route in result()!.routes" :key="route.route_id + route.direction" class="list-item">
+      <div
+        v-for="route in result()!.routes"
+        :key="route.route_id + route.direction"
+        class="list-item"
+      >
         <span>{{ route.route_name }}（{{ route.direction }}）</span>
         <StatusBadge :status="route.status" show-mock-tag />
       </div>

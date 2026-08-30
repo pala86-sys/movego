@@ -37,7 +37,9 @@ const groups = computed<LineGroup[]>(() => {
 });
 
 const activeGroupId = ref(GROUP_ORDER[0]);
-const activeGroup = computed(() => groups.value.find((g) => g.groupId === activeGroupId.value) ?? groups.value[0]);
+const activeGroup = computed(
+  () => groups.value.find((g) => g.groupId === activeGroupId.value) ?? groups.value[0]
+);
 
 // 站名 -> 有經過該站的主線 groupId 清單，用來標註轉乘站可以轉去哪條線
 const stationToGroupIds = computed(() => {
@@ -100,7 +102,9 @@ function viewLiveboard() {
           :key="group.groupId"
           class="group-tab"
           :class="{ active: activeGroupId === group.groupId }"
-          :style="activeGroupId === group.groupId ? { borderColor: group.color, color: group.color } : {}"
+          :style="
+            activeGroupId === group.groupId ? { borderColor: group.color, color: group.color } : {}
+          "
           type="button"
           @click="activeGroupId = group.groupId"
         >
@@ -110,7 +114,12 @@ function viewLiveboard() {
 
       <div v-if="activeGroup" class="line-body">
         <div class="line-diagram" :style="{ '--line-color': activeGroup.color }">
-          <div v-for="station in activeGroup.main.stations" :key="station.id" class="station-row" @click="openStation(station.name)">
+          <div
+            v-for="station in activeGroup.main.stations"
+            :key="station.id"
+            class="station-row"
+            @click="openStation(station.name)"
+          >
             <span class="station-dot"></span>
             <span class="station-name">{{ station.name }}</span>
             <span v-if="transferLabel(station.name, activeGroup.groupId)" class="transfer-label">{{
@@ -120,9 +129,16 @@ function viewLiveboard() {
         </div>
 
         <template v-for="branch in activeGroup.branches" :key="branch.id">
-          <div class="branch-title">支線：{{ branch.name.replace(activeGroup.main.name, "").replace(/[（）]/g, "") }}</div>
+          <div class="branch-title">
+            支線：{{ branch.name.replace(activeGroup.main.name, "").replace(/[（）]/g, "") }}
+          </div>
           <div class="line-diagram branch" :style="{ '--line-color': activeGroup.color }">
-            <div v-for="station in branch.stations" :key="station.id" class="station-row" @click="openStation(station.name)">
+            <div
+              v-for="station in branch.stations"
+              :key="station.id"
+              class="station-row"
+              @click="openStation(station.name)"
+            >
               <span class="station-dot"></span>
               <span class="station-name">{{ station.name }}</span>
             </div>
@@ -136,12 +152,33 @@ function viewLiveboard() {
     <div v-if="actionSheetStation" class="action-sheet-overlay" @click.self="cancelAction">
       <div class="action-sheet">
         <div class="action-sheet-title">{{ actionSheetStation }}</div>
-        <button class="btn" style="width: 100%; margin-bottom: 8px" type="button" @click="choose('from')">設為起點</button>
-        <button class="btn" style="width: 100%; margin-bottom: 8px" type="button" @click="choose('to')">設為終點</button>
-        <button class="btn btn-outline" style="width: 100%; margin-bottom: 8px" type="button" @click="viewLiveboard">
+        <button
+          class="btn"
+          style="width: 100%; margin-bottom: 8px"
+          type="button"
+          @click="choose('from')"
+        >
+          設為起點
+        </button>
+        <button
+          class="btn"
+          style="width: 100%; margin-bottom: 8px"
+          type="button"
+          @click="choose('to')"
+        >
+          設為終點
+        </button>
+        <button
+          class="btn btn-outline"
+          style="width: 100%; margin-bottom: 8px"
+          type="button"
+          @click="viewLiveboard"
+        >
           查看即時到站
         </button>
-        <button class="btn btn-outline" style="width: 100%" type="button" @click="cancelAction">取消</button>
+        <button class="btn btn-outline" style="width: 100%" type="button" @click="cancelAction">
+          取消
+        </button>
       </div>
     </div>
   </div>
@@ -197,8 +234,20 @@ function viewLiveboard() {
   overflow-y: hidden;
   padding: 2px 16px 10px;
   margin: 0 -16px 6px;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
 }
 
 .group-tab {

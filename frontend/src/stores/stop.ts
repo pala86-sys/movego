@@ -51,7 +51,10 @@ export const useStopStore = defineStore("stop", {
     },
     async loadNearby(lat?: number, lng?: number) {
       const now = Date.now();
-      if (this.lastNearbyFetchAt !== null && now - this.lastNearbyFetchAt < NEARBY_MIN_INTERVAL_MS) {
+      if (
+        this.lastNearbyFetchAt !== null &&
+        now - this.lastNearbyFetchAt < NEARBY_MIN_INTERVAL_MS
+      ) {
         return; // 60 秒節流：沿用現有資料，不重打 API
       }
       this.lastNearbyFetchAt = now;

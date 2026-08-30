@@ -27,7 +27,9 @@ function renderMarkers() {
   if (!map) return;
   markers.forEach((m) => m.remove());
   markers = props.stops.map((stop) => {
-    const marker = L.marker([stop.lat, stop.lng], { icon: stop.type === "metro" ? metroIcon() : busIcon() });
+    const marker = L.marker([stop.lat, stop.lng], {
+      icon: stop.type === "metro" ? metroIcon() : busIcon()
+    });
     marker.bindPopup(stop.name);
     marker.on("click", () => emit("select", stop.id));
     marker.addTo(map as L.Map);

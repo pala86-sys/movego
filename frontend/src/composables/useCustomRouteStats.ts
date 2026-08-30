@@ -22,7 +22,10 @@ export interface CustomRouteStats {
   estimatedMinutes: number;
 }
 
-export function computeCustomRouteStats(legs: CustomRouteLeg[], lines: MetroLine[]): CustomRouteStats {
+export function computeCustomRouteStats(
+  legs: CustomRouteLeg[],
+  lines: MetroLine[]
+): CustomRouteStats {
   const totalStopCount = legs.reduce((sum, leg) => sum + legStopCount(leg, lines), 0);
   const transferCount = Math.max(legs.length - 1, 0);
   const estimatedMinutes = totalStopCount * MINUTES_PER_STOP + transferCount * MINUTES_PER_TRANSFER;

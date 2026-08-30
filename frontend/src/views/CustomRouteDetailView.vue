@@ -13,7 +13,9 @@ const customRoutesStore = useCustomRoutesStore();
 const metroStore = useMetroStore();
 
 const route = computed(() => customRoutesStore.byId(props.id));
-const stats = computed(() => (route.value ? computeCustomRouteStats(route.value.legs, metroStore.lines) : null));
+const stats = computed(() =>
+  route.value ? computeCustomRouteStats(route.value.legs, metroStore.lines) : null
+);
 
 onMounted(() => {
   metroStore.loadLines();
@@ -28,7 +30,9 @@ function remove() {
 <template>
   <div class="page">
     <TopBar :title="route?.name || '自訂路線'" />
-    <button class="btn btn-outline back-btn" type="button" @click="router.push('/favorites')">‹ 返回收藏</button>
+    <button class="btn btn-outline back-btn" type="button" @click="router.push('/favorites')">
+      ‹ 返回收藏
+    </button>
 
     <div v-if="!route" class="card"><div class="empty-hint">找不到這條自訂路線</div></div>
 
@@ -54,10 +58,17 @@ function remove() {
       </div>
 
       <div class="action-row">
-        <button class="btn btn-outline" style="flex: 1" type="button" @click="router.push('/custom-routes/' + id + '/edit')">
+        <button
+          class="btn btn-outline"
+          style="flex: 1"
+          type="button"
+          @click="router.push('/custom-routes/' + id + '/edit')"
+        >
           編輯
         </button>
-        <button class="btn btn-outline danger" style="flex: 1" type="button" @click="remove">刪除</button>
+        <button class="btn btn-outline danger" style="flex: 1" type="button" @click="remove">
+          刪除
+        </button>
       </div>
     </div>
   </div>

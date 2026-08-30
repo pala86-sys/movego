@@ -40,7 +40,13 @@ body {
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "PingFang TC",
+    "Noto Sans TC",
+    "Microsoft JhengHei",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-tap-highlight-color: transparent;

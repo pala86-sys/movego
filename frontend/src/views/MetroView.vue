@@ -29,12 +29,19 @@ const showMapPicker = ref(false);
 const selectedView = ref<"system" | string>("system");
 const matchingCustomRoutes = computed(() =>
   customRoutesStore.items.filter(
-    (r) => r.legs.length > 0 && r.legs[0].from === fromStation.value && r.legs[r.legs.length - 1].to === toStation.value
+    (r) =>
+      r.legs.length > 0 &&
+      r.legs[0].from === fromStation.value &&
+      r.legs[r.legs.length - 1].to === toStation.value
   )
 );
-const selectedCustomRoute = computed(() => matchingCustomRoutes.value.find((r) => r.id === selectedView.value) ?? null);
+const selectedCustomRoute = computed(
+  () => matchingCustomRoutes.value.find((r) => r.id === selectedView.value) ?? null
+);
 const selectedCustomRouteStats = computed(() =>
-  selectedCustomRoute.value ? computeCustomRouteStats(selectedCustomRoute.value.legs, metroStore.lines) : null
+  selectedCustomRoute.value
+    ? computeCustomRouteStats(selectedCustomRoute.value.legs, metroStore.lines)
+    : null
 );
 
 function setStation(role: "from" | "to", name: string) {
@@ -145,10 +152,20 @@ onMounted(() => {
         </li>
       </ul>
 
-      <button class="btn btn-outline" style="width: 100%; margin-top: 6px" type="button" @click="showMapPicker = true">
+      <button
+        class="btn btn-outline"
+        style="width: 100%; margin-top: 6px"
+        type="button"
+        @click="showMapPicker = true"
+      >
         🗺️ 用路線圖選站
       </button>
-      <button class="btn" style="width: 100%; margin-top: 8px" :disabled="!fromStation || !toStation" @click="search">
+      <button
+        class="btn"
+        style="width: 100%; margin-top: 8px"
+        :disabled="!fromStation || !toStation"
+        @click="search"
+      >
         查詢路線
       </button>
     </div>
@@ -228,7 +245,9 @@ onMounted(() => {
             <div class="summary-label">共經過</div>
           </div>
         </div>
-        <div class="custom-route-hint">🧭 {{ selectedCustomRoute.name }}（自訂路線，時間為推估值）</div>
+        <div class="custom-route-hint">
+          🧭 {{ selectedCustomRoute.name }}（自訂路線，時間為推估值）
+        </div>
         <div v-for="(leg, index) in selectedCustomRoute.legs" :key="index" class="leg">
           <div class="leg-line" :style="{ background: leg.lineColor }">{{ leg.lineName }}</div>
           <div class="leg-body">

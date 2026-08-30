@@ -79,7 +79,10 @@ function openRecent(item: (typeof recentStore.items)[number]) {
 
     <template v-if="searched">
       <div class="section-title">搜尋結果</div>
-      <div class="card" v-if="metroStore.stationResults.length === 0 && stopStore.searchResults.length === 0">
+      <div
+        class="card"
+        v-if="metroStore.stationResults.length === 0 && stopStore.searchResults.length === 0"
+      >
         <div class="empty-hint">找不到符合的捷運站或站牌</div>
       </div>
       <div class="card" v-else>
@@ -111,13 +114,20 @@ function openRecent(item: (typeof recentStore.items)[number]) {
         <div v-for="item in favoritePreview" :key="item.type + item.key" class="list-item">
           <span>⭐ {{ item.label }}</span>
         </div>
-        <router-link v-if="favoritePreview.length > 0" to="/favorites" class="see-more">查看全部收藏 ›</router-link>
+        <router-link v-if="favoritePreview.length > 0" to="/favorites" class="see-more"
+          >查看全部收藏 ›</router-link
+        >
       </div>
 
       <div class="section-title">最近查詢</div>
       <div class="card">
         <div v-if="recentPreview.length === 0" class="empty-hint">尚無查詢紀錄</div>
-        <div v-for="item in recentPreview" :key="item.type + item.key" class="list-item" @click="openRecent(item)">
+        <div
+          v-for="item in recentPreview"
+          :key="item.type + item.key"
+          class="list-item"
+          @click="openRecent(item)"
+        >
           <span>{{ item.label }}</span>
         </div>
       </div>

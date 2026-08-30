@@ -54,12 +54,23 @@ function back() {
       <div v-if="busStore.loading" class="card" style="margin-top: 16px">
         <div class="empty-hint">查詢中…</div>
       </div>
-      <div v-else-if="busStore.error" class="error-hint" style="margin-top: 16px">{{ busStore.error }}</div>
-      <div v-else-if="hasSearched && busStore.searchResults.length === 0" class="card" style="margin-top: 16px">
+      <div v-else-if="busStore.error" class="error-hint" style="margin-top: 16px">
+        {{ busStore.error }}
+      </div>
+      <div
+        v-else-if="hasSearched && busStore.searchResults.length === 0"
+        class="card"
+        style="margin-top: 16px"
+      >
         <div class="empty-hint">找不到符合的公車路線</div>
       </div>
       <div v-else-if="hasSearched" class="card" style="margin-top: 16px">
-        <div v-for="route in busStore.searchResults" :key="route.id" class="list-item route-item" @click="openRoute(route.id)">
+        <div
+          v-for="route in busStore.searchResults"
+          :key="route.id"
+          class="list-item route-item"
+          @click="openRoute(route.id)"
+        >
           <div>
             <div class="route-name">{{ route.name }}</div>
             <div class="route-sub">{{ route.from_ }} → {{ route.to }} ‧ {{ route.operator }}</div>
@@ -78,7 +89,11 @@ function back() {
             <div class="route-name-lg">{{ busStore.currentRoute.name }}</div>
             <div class="route-sub">{{ busStore.currentRoute.operator }}</div>
           </div>
-          <FavoriteStar type="bus-route" :item-key="busStore.currentRoute.id" :label="busStore.currentRoute.name + ' 公車'" />
+          <FavoriteStar
+            type="bus-route"
+            :item-key="busStore.currentRoute.id"
+            :label="busStore.currentRoute.name + ' 公車'"
+          />
         </div>
 
         <div class="direction-tabs">
@@ -89,7 +104,10 @@ function back() {
             @click="direction = 'outbound'"
           >
             <span class="direction-label">去程</span>
-            <span class="direction-route">{{ busStore.currentRoute.outbound.from_ }} → {{ busStore.currentRoute.outbound.to }}</span>
+            <span class="direction-route"
+              >{{ busStore.currentRoute.outbound.from_ }} →
+              {{ busStore.currentRoute.outbound.to }}</span
+            >
           </button>
           <button
             class="direction-tab"
@@ -98,13 +116,19 @@ function back() {
             @click="direction = 'inbound'"
           >
             <span class="direction-label">返程</span>
-            <span class="direction-route">{{ busStore.currentRoute.inbound.from_ }} → {{ busStore.currentRoute.inbound.to }}</span>
+            <span class="direction-route"
+              >{{ busStore.currentRoute.inbound.from_ }} →
+              {{ busStore.currentRoute.inbound.to }}</span
+            >
           </button>
         </div>
 
         <div class="stop-list">
           <div
-            v-for="stop in (direction === 'outbound' ? busStore.currentRoute.outbound : busStore.currentRoute.inbound).stops"
+            v-for="stop in (direction === 'outbound'
+              ? busStore.currentRoute.outbound
+              : busStore.currentRoute.inbound
+            ).stops"
             :key="stop.stop_name"
             class="list-item"
           >

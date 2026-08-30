@@ -16,7 +16,11 @@ const router = useRouter();
 const { coords, status, request } = useGeolocation();
 // 附近停車場用獨立的一份定位狀態，避免跟附近站牌共用同一個 coords watch，
 // 導致按「查詢附近停車場」時意外也把附近站牌的 TDX 額度一起打掉。
-const { coords: parkingCoords, status: parkingLocateStatus, request: requestParkingLocation } = useGeolocation();
+const {
+  coords: parkingCoords,
+  status: parkingLocateStatus,
+  request: requestParkingLocation
+} = useGeolocation();
 
 const TAIPEI_STATION = { lat: 25.0478, lng: 121.517 };
 const center = computed(() => coords.value ?? TAIPEI_STATION);
@@ -97,7 +101,12 @@ function spacesClass(availableSpaces: number | null): string {
   <div class="page">
     <TopBar title="附近站牌" />
 
-    <button class="btn locate-btn" type="button" :disabled="cooldownRemainingSec > 0" @click="onLocate">
+    <button
+      class="btn locate-btn"
+      type="button"
+      :disabled="cooldownRemainingSec > 0"
+      @click="onLocate"
+    >
       📍
       {{
         status === "loading"
@@ -107,22 +116,39 @@ function spacesClass(availableSpaces: number | null): string {
             : "查詢附近站牌"
       }}
     </button>
-    <div v-if="status === 'denied'" class="hint-text">無法取得定位權限，顯示台北車站周邊做為預設位置</div>
-    <div v-else-if="status === 'unsupported'" class="hint-text">此裝置不支援定位，顯示台北車站周邊做為預設位置</div>
-    <div v-else-if="cooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次</div>
+    <div v-if="status === 'denied'" class="hint-text">
+      無法取得定位權限，顯示台北車站周邊做為預設位置
+    </div>
+    <div v-else-if="status === 'unsupported'" class="hint-text">
+      此裝置不支援定位，顯示台北車站周邊做為預設位置
+    </div>
+    <div v-else-if="cooldownRemainingSec > 0" class="hint-text">
+      為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次
+    </div>
 
     <div class="map-wrap">
       <LeafletMap :stops="stopStore.nearbyStops" :center="center" @select="openStop" />
     </div>
 
-    <div class="section-title">附近站牌清單{{ isRealData ? "" : stopStore.lastNearbyFetchAt ? "（模擬資料）" : "" }}</div>
+    <div class="section-title">
+      附近站牌清單{{ isRealData ? "" : stopStore.lastNearbyFetchAt ? "（模擬資料）" : "" }}
+    </div>
     <div v-if="stopStore.error" class="error-hint">{{ stopStore.error }}</div>
     <div v-else class="card">
-      <div v-if="stopStore.lastNearbyFetchAt === null" class="empty-hint">按上方「查詢附近站牌」開始查詢</div>
+      <div v-if="stopStore.lastNearbyFetchAt === null" class="empty-hint">
+        按上方「查詢附近站牌」開始查詢
+      </div>
       <div v-else-if="stopStore.nearbyStops.length === 0" class="empty-hint">附近沒有找到站牌</div>
-      <div v-for="stop in stopStore.nearbyStops" :key="stop.id" class="list-item" @click="openStop(stop.id)">
+      <div
+        v-for="stop in stopStore.nearbyStops"
+        :key="stop.id"
+        class="list-item"
+        @click="openStop(stop.id)"
+      >
         <span>{{ stop.type === "metro" ? "🚇" : "🚌" }} {{ stop.name }}</span>
-        <span v-if="stop.distance_meters !== null" class="distance">{{ stop.distance_meters }} 公尺</span>
+        <span v-if="stop.distance_meters !== null" class="distance"
+          >{{ stop.distance_meters }} 公尺</span
+        >
         <span v-else class="arrow">›</span>
       </div>
     </div>
@@ -143,13 +169,19 @@ function spacesClass(availableSpaces: number | null): string {
             : "查詢附近停車場"
       }}
     </button>
-    <div v-if="parkingLocateStatus === 'denied'" class="hint-text">無法取得定位權限，請開啟定位權限後再試一次</div>
+    <div v-if="parkingLocateStatus === 'denied'" class="hint-text">
+      無法取得定位權限，請開啟定位權限後再試一次
+    </div>
     <div v-else-if="parkingLocateStatus === 'unsupported'" class="hint-text">此裝置不支援定位</div>
-    <div v-else-if="parkingCooldownRemainingSec > 0" class="hint-text">為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次</div>
+    <div v-else-if="parkingCooldownRemainingSec > 0" class="hint-text">
+      為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次
+    </div>
 
     <div v-if="parkingStore.error" class="error-hint">{{ parkingStore.error }}</div>
     <div v-else class="card">
-      <div v-if="parkingStore.lastFetchAt === null" class="empty-hint">按上方按鈕查詢附近停車場剩餘車位</div>
+      <div v-if="parkingStore.lastFetchAt === null" class="empty-hint">
+        按上方按鈕查詢附近停車場剩餘車位
+      </div>
       <div v-else-if="parkingStore.lots.length === 0" class="empty-hint">附近沒有找到停車場</div>
       <div v-for="lot in parkingStore.lots" :key="lot.id" class="list-item parking-item">
         <div class="parking-info">
@@ -160,7 +192,9 @@ function spacesClass(availableSpaces: number | null): string {
           <span class="spaces" :class="spacesClass(lot.available_spaces)">
             {{ spacesLabel(lot.available_spaces, lot.total_spaces) }}
           </span>
-          <span v-if="lot.distance_meters !== null" class="distance">{{ lot.distance_meters }} 公尺</span>
+          <span v-if="lot.distance_meters !== null" class="distance"
+            >{{ lot.distance_meters }} 公尺</span
+          >
         </div>
       </div>
     </div>
