@@ -1,17 +1,25 @@
 <script setup lang="ts">
+import { computed } from "vue";
+
+import { useSettingsStore } from "@/stores/settings";
+
 interface NavItem {
   to: string;
   label: string;
   icon: string;
 }
 
-const items: NavItem[] = [
+const settings = useSettingsStore();
+
+// 首頁與設定一律顯示；其餘分頁看「設定」頁的勾選狀態
+const items = computed<NavItem[]>(() => [
   { to: "/", label: "首頁", icon: "🏠" },
-  { to: "/metro", label: "捷運", icon: "🚇" },
-  { to: "/bus", label: "公車", icon: "🚌" },
-  { to: "/nearby", label: "附近", icon: "📍" },
-  { to: "/favorites", label: "收藏", icon: "⭐" }
-];
+  ...(settings.flags.metro ? [{ to: "/metro", label: "捷運", icon: "🚇" }] : []),
+  ...(settings.flags.bus ? [{ to: "/bus", label: "公車", icon: "🚌" }] : []),
+  ...(settings.flags.nearby ? [{ to: "/nearby", label: "附近", icon: "📍" }] : []),
+  ...(settings.flags.favorites ? [{ to: "/favorites", label: "收藏", icon: "⭐" }] : []),
+  { to: "/settings", label: "設定", icon: "⚙️" }
+]);
 </script>
 
 <template>

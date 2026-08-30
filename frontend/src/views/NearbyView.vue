@@ -5,21 +5,30 @@ import { useRouter } from "vue-router";
 import LeafletMap from "@/components/LeafletMap.vue";
 import TopBar from "@/components/TopBar.vue";
 import { useGeolocation } from "@/composables/useGeolocation";
+import { useBikeStore } from "@/stores/bike";
 import { useParkingStore } from "@/stores/parking";
+import { useSettingsStore } from "@/stores/settings";
 import { useStopStore } from "@/stores/stop";
 
 const COOLDOWN_MS = 60000;
 
 const stopStore = useStopStore();
 const parkingStore = useParkingStore();
+const bikeStore = useBikeStore();
+const settings = useSettingsStore();
 const router = useRouter();
 const { coords, status, request } = useGeolocation();
-// 附近停車場用獨立的一份定位狀態，避免跟附近站牌共用同一個 coords watch，
-// 導致按「查詢附近停車場」時意外也把附近站牌的 TDX 額度一起打掉。
+// 附近停車場／YouBike 各自用獨立的一份定位狀態，避免跟附近站牌共用同一個 coords watch，
+// 導致按其中一顆按鈕時意外把其他區塊的 TDX 額度也一起打掉。
 const {
   coords: parkingCoords,
   status: parkingLocateStatus,
   request: requestParkingLocation
+} = useGeolocation();
+const {
+  coords: bikeCoords,
+  status: bikeLocateStatus,
+  request: requestBikeLocation
 } = useGeolocation();
 
 const TAIPEI_STATION = { lat: 25.0478, lng: 121.517 };
@@ -39,6 +48,12 @@ const cooldownRemainingSec = computed(() => {
 const parkingCooldownRemainingSec = computed(() => {
   if (parkingStore.lastFetchAt === null) return 0;
   const remaining = COOLDOWN_MS - (nowTick.value - parkingStore.lastFetchAt);
+  return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+});
+
+const bikeCooldownRemainingSec = computed(() => {
+  if (bikeStore.lastFetchAt === null) return 0;
+  const remaining = COOLDOWN_MS - (nowTick.value - bikeStore.lastFetchAt);
   return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
 });
 
@@ -76,6 +91,27 @@ function onSearchParking() {
 watch(parkingCoords, (value) => {
   if (value) parkingStore.loadNearby(value.lat, value.lng);
 });
+
+function onSearchBike() {
+  if (bikeCooldownRemainingSec.value > 0) return;
+  const known = coords.value ?? bikeCoords.value ?? parkingCoords.value;
+  if (known) {
+    bikeStore.loadNearby(known.lat, known.lng);
+  } else {
+    requestBikeLocation();
+  }
+}
+
+watch(bikeCoords, (value) => {
+  if (value) bikeStore.loadNearby(value.lat, value.lng);
+});
+
+function bikeRentClass(availableRent: number | null): string {
+  if (availableRent === null) return "spaces-unknown";
+  if (availableRent === 0) return "spaces-full";
+  if (availableRent <= 3) return "spaces-low";
+  return "spaces-ok";
+}
 
 function openStop(id: string) {
   const stop = stopStore.nearbyStops.find((s) => s.id === id);
@@ -153,51 +189,121 @@ function spacesClass(availableSpaces: number | null): string {
       </div>
     </div>
 
-    <div class="section-title">附近停車場</div>
-    <button
-      class="btn btn-outline locate-btn"
-      type="button"
-      :disabled="parkingCooldownRemainingSec > 0"
-      @click="onSearchParking"
-    >
-      🅿️
-      {{
-        parkingLocateStatus === "loading" || parkingStore.loading
-          ? "定位查詢中…"
-          : parkingCooldownRemainingSec > 0
-            ? `請稍候 ${parkingCooldownRemainingSec} 秒再更新`
-            : "查詢附近停車場"
-      }}
-    </button>
-    <div v-if="parkingLocateStatus === 'denied'" class="hint-text">
-      無法取得定位權限，請開啟定位權限後再試一次
-    </div>
-    <div v-else-if="parkingLocateStatus === 'unsupported'" class="hint-text">此裝置不支援定位</div>
-    <div v-else-if="parkingCooldownRemainingSec > 0" class="hint-text">
-      為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次
-    </div>
+    <template v-if="settings.flags.nearbyParking">
+      <div class="section-title">附近停車場</div>
+      <button
+        class="btn btn-outline locate-btn"
+        type="button"
+        :disabled="parkingCooldownRemainingSec > 0"
+        @click="onSearchParking"
+      >
+        🅿️
+        {{
+          parkingLocateStatus === "loading" || parkingStore.loading
+            ? "定位查詢中…"
+            : parkingCooldownRemainingSec > 0
+              ? `請稍候 ${parkingCooldownRemainingSec} 秒再更新`
+              : "查詢附近停車場"
+        }}
+      </button>
+      <div v-if="parkingLocateStatus === 'denied'" class="hint-text">
+        無法取得定位權限，請開啟定位權限後再試一次
+      </div>
+      <div v-else-if="parkingLocateStatus === 'unsupported'" class="hint-text">
+        此裝置不支援定位
+      </div>
+      <div v-else-if="parkingCooldownRemainingSec > 0" class="hint-text">
+        為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次
+      </div>
 
-    <div v-if="parkingStore.error" class="error-hint">{{ parkingStore.error }}</div>
-    <div v-else class="card">
-      <div v-if="parkingStore.lastFetchAt === null" class="empty-hint">
-        按上方按鈕查詢附近停車場剩餘車位
-      </div>
-      <div v-else-if="parkingStore.lots.length === 0" class="empty-hint">附近沒有找到停車場</div>
-      <div v-for="lot in parkingStore.lots" :key="lot.id" class="list-item parking-item">
-        <div class="parking-info">
-          <div class="parking-name">{{ lot.name }}</div>
-          <div class="parking-address">{{ lot.address }}</div>
+      <div v-if="parkingStore.error" class="error-hint">{{ parkingStore.error }}</div>
+      <div v-else class="card">
+        <div v-if="parkingStore.lastFetchAt === null" class="empty-hint">
+          按上方按鈕查詢附近停車場剩餘車位
         </div>
-        <div class="parking-meta">
-          <span class="spaces" :class="spacesClass(lot.available_spaces)">
-            {{ spacesLabel(lot.available_spaces, lot.total_spaces) }}
-          </span>
-          <span v-if="lot.distance_meters !== null" class="distance"
-            >{{ lot.distance_meters }} 公尺</span
-          >
+        <div v-else-if="parkingStore.lots.length === 0" class="empty-hint">附近沒有找到停車場</div>
+        <div v-for="lot in parkingStore.lots" :key="lot.id" class="list-item parking-item">
+          <div class="parking-info">
+            <div class="parking-name">{{ lot.name }}</div>
+            <div class="parking-address">{{ lot.address }}</div>
+          </div>
+          <div class="parking-meta">
+            <span class="spaces" :class="spacesClass(lot.available_spaces)">
+              {{ spacesLabel(lot.available_spaces, lot.total_spaces) }}
+            </span>
+            <span v-if="lot.distance_meters !== null" class="distance"
+              >{{ lot.distance_meters }} 公尺</span
+            >
+          </div>
         </div>
       </div>
-    </div>
+    </template>
+
+    <template v-if="settings.flags.nearbyYoubike">
+      <div class="section-title">附近 YouBike</div>
+      <button
+        class="btn btn-outline locate-btn"
+        type="button"
+        :disabled="bikeCooldownRemainingSec > 0"
+        @click="onSearchBike"
+      >
+        🚲
+        {{
+          bikeLocateStatus === "loading" || bikeStore.loading
+            ? "定位查詢中…"
+            : bikeCooldownRemainingSec > 0
+              ? `請稍候 ${bikeCooldownRemainingSec} 秒再更新`
+              : "查詢附近 YouBike"
+        }}
+      </button>
+      <div v-if="bikeLocateStatus === 'denied'" class="hint-text">
+        無法取得定位權限，請開啟定位權限後再試一次
+      </div>
+      <div v-else-if="bikeLocateStatus === 'unsupported'" class="hint-text">此裝置不支援定位</div>
+      <div v-else-if="bikeCooldownRemainingSec > 0" class="hint-text">
+        為了不超過即時資料查詢限制，更新頻率限制在 60 秒一次
+      </div>
+
+      <div v-if="bikeStore.error" class="error-hint">{{ bikeStore.error }}</div>
+      <div v-else class="card">
+        <div v-if="bikeStore.lastFetchAt === null" class="empty-hint">
+          按上方按鈕查詢附近 YouBike 站點
+        </div>
+        <div v-else-if="bikeStore.stations.length === 0" class="empty-hint">
+          附近沒有找到 YouBike 站點
+        </div>
+        <div v-for="station in bikeStore.stations" :key="station.id" class="list-item parking-item">
+          <div class="parking-info">
+            <div class="parking-name">{{ station.name }}</div>
+            <div class="parking-address">{{ station.address }}</div>
+          </div>
+          <div class="parking-meta">
+            <span v-if="station.status !== '正常'" class="spaces spaces-unknown">{{
+              station.status
+            }}</span>
+            <template v-else>
+              <span class="spaces" :class="bikeRentClass(station.available_rent)">
+                可借 {{ station.available_rent ?? "—" }}
+              </span>
+              <span
+                v-if="
+                  station.available_rent_general !== null ||
+                  station.available_rent_electric !== null
+                "
+                class="bike-detail"
+              >
+                一般 {{ station.available_rent_general ?? "—" }} ／ 電輔
+                {{ station.available_rent_electric ?? "—" }}
+              </span>
+              <span class="bike-detail">可還 {{ station.available_return ?? "—" }}</span>
+            </template>
+            <span v-if="station.distance_meters !== null" class="distance"
+              >{{ station.distance_meters }} 公尺</span
+            >
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -248,6 +354,12 @@ function spacesClass(availableSpaces: number | null): string {
   font-size: 12px;
   color: var(--color-text-muted);
   margin-top: 2px;
+}
+
+.bike-detail {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .parking-meta {

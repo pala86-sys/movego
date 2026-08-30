@@ -5,12 +5,14 @@ import { useRouter } from "vue-router";
 import TopBar from "@/components/TopBar.vue";
 import { debounce } from "@/utils/debounce";
 import { useMetroStore } from "@/stores/metro";
+import { useSettingsStore } from "@/stores/settings";
 import { useStopStore } from "@/stores/stop";
 import { useFavoritesStore } from "@/stores/favorites";
 import { useRecentQueriesStore } from "@/stores/recentQueries";
 
 const router = useRouter();
 const metroStore = useMetroStore();
+const settings = useSettingsStore();
 const stopStore = useStopStore();
 const favoritesStore = useFavoritesStore();
 const recentStore = useRecentQueriesStore();
@@ -18,13 +20,25 @@ const recentStore = useRecentQueriesStore();
 const keyword = ref("");
 const searched = ref(false);
 
+// 站牌搜尋結果會連到站牌詳情（顯示公車路線），所以跟著「公車」開關走
+const showMetroResults = computed(() => settings.flags.metro);
+const showStopResults = computed(() => settings.flags.bus);
+
+const visibleMetroResults = computed(() =>
+  showMetroResults.value ? metroStore.stationResults : []
+);
+const visibleStopResults = computed(() => (showStopResults.value ? stopStore.searchResults : []));
+
 const runSearch = debounce(async (value: string) => {
   if (!value.trim()) {
     searched.value = false;
     return;
   }
   searched.value = true;
-  await Promise.all([metroStore.searchStations(value), stopStore.search(value)]);
+  await Promise.all([
+    showMetroResults.value ? metroStore.searchStations(value) : Promise.resolve(),
+    showStopResults.value ? stopStore.search(value) : Promise.resolve()
+  ]);
 }, 300);
 
 function onInput() {
@@ -71,23 +85,27 @@ function openRecent(item: (typeof recentStore.items)[number]) {
       />
     </div>
 
-    <div class="quick-tabs">
-      <router-link to="/metro" class="quick-tab">🚇 捷運路線</router-link>
-      <router-link to="/bus" class="quick-tab">🚌 公車號碼</router-link>
-      <router-link to="/nearby" class="quick-tab">📍 附近站牌</router-link>
+    <div
+      class="quick-tabs"
+      v-if="settings.flags.metro || settings.flags.bus || settings.flags.nearby"
+    >
+      <router-link v-if="settings.flags.metro" to="/metro" class="quick-tab"
+        >🚇 捷運路線</router-link
+      >
+      <router-link v-if="settings.flags.bus" to="/bus" class="quick-tab">🚌 公車號碼</router-link>
+      <router-link v-if="settings.flags.nearby" to="/nearby" class="quick-tab"
+        >📍 附近站牌</router-link
+      >
     </div>
 
     <template v-if="searched">
       <div class="section-title">搜尋結果</div>
-      <div
-        class="card"
-        v-if="metroStore.stationResults.length === 0 && stopStore.searchResults.length === 0"
-      >
+      <div class="card" v-if="visibleMetroResults.length === 0 && visibleStopResults.length === 0">
         <div class="empty-hint">找不到符合的捷運站或站牌</div>
       </div>
       <div class="card" v-else>
         <div
-          v-for="item in metroStore.stationResults"
+          v-for="item in visibleMetroResults"
           :key="'m-' + item.name"
           class="list-item result-item"
           @click="goToStation(item.name)"
@@ -96,7 +114,7 @@ function openRecent(item: (typeof recentStore.items)[number]) {
           <span class="arrow">›</span>
         </div>
         <div
-          v-for="item in stopStore.searchResults"
+          v-for="item in visibleStopResults"
           :key="'s-' + item.stop_name"
           class="list-item result-item"
           @click="goToStop(item.stop_name)"
@@ -114,7 +132,10 @@ function openRecent(item: (typeof recentStore.items)[number]) {
         <div v-for="item in favoritePreview" :key="item.type + item.key" class="list-item">
           <span>⭐ {{ item.label }}</span>
         </div>
-        <router-link v-if="favoritePreview.length > 0" to="/favorites" class="see-more"
+        <router-link
+          v-if="settings.flags.favorites && favoritePreview.length > 0"
+          to="/favorites"
+          class="see-more"
           >查看全部收藏 ›</router-link
         >
       </div>

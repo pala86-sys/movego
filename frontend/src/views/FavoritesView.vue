@@ -4,10 +4,12 @@ import { useRouter } from "vue-router";
 import TopBar from "@/components/TopBar.vue";
 import { useCustomRoutesStore } from "@/stores/customRoutes";
 import { useFavoritesStore } from "@/stores/favorites";
+import { useSettingsStore } from "@/stores/settings";
 import type { FavoriteItem } from "@/types";
 
 const favoritesStore = useFavoritesStore();
 const customRoutesStore = useCustomRoutesStore();
+const settings = useSettingsStore();
 const router = useRouter();
 
 function open(item: FavoriteItem) {
@@ -41,29 +43,31 @@ function removeCustomRoute(id: string, event: Event) {
   <div class="page">
     <TopBar title="我的收藏" />
 
-    <div class="section-title" style="margin-top: 0">自訂路線</div>
-    <div class="card">
-      <div v-if="customRoutesStore.items.length === 0" class="empty-hint">
-        還沒有自訂路線，可以把你自己知道比較快的走法存起來
-      </div>
-      <div
-        v-for="route in customRoutesStore.items"
-        :key="route.id"
-        class="list-item"
-        @click="openCustomRoute(route.id)"
-      >
-        <span>🧭 {{ route.name }}</span>
-        <button
-          class="remove-btn"
-          type="button"
-          @click="removeCustomRoute(route.id, $event)"
-          aria-label="刪除自訂路線"
+    <template v-if="settings.flags.customRoutes">
+      <div class="section-title" style="margin-top: 0">自訂路線</div>
+      <div class="card">
+        <div v-if="customRoutesStore.items.length === 0" class="empty-hint">
+          還沒有自訂路線，可以把你自己知道比較快的走法存起來
+        </div>
+        <div
+          v-for="route in customRoutesStore.items"
+          :key="route.id"
+          class="list-item"
+          @click="openCustomRoute(route.id)"
         >
-          ✕
-        </button>
+          <span>🧭 {{ route.name }}</span>
+          <button
+            class="remove-btn"
+            type="button"
+            @click="removeCustomRoute(route.id, $event)"
+            aria-label="刪除自訂路線"
+          >
+            ✕
+          </button>
+        </div>
+        <router-link to="/custom-routes/new" class="see-more">＋ 新增自訂路線</router-link>
       </div>
-      <router-link to="/custom-routes/new" class="see-more">＋ 新增自訂路線</router-link>
-    </div>
+    </template>
 
     <template v-if="favoritesStore.items.length === 0">
       <div class="section-title">收藏</div>

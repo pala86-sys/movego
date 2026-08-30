@@ -10,12 +10,14 @@ import { computeCustomRouteStats } from "@/composables/useCustomRouteStats";
 import { useCustomRoutesStore } from "@/stores/customRoutes";
 import { useMetroStore } from "@/stores/metro";
 import { useRecentQueriesStore } from "@/stores/recentQueries";
+import { useSettingsStore } from "@/stores/settings";
 import type { MetroStationSearchItem } from "@/types";
 
 const route = useRoute();
 const metroStore = useMetroStore();
 const recentStore = useRecentQueriesStore();
 const customRoutesStore = useCustomRoutesStore();
+const settings = useSettingsStore();
 
 const fromInput = ref("");
 const toInput = ref("");
@@ -28,12 +30,14 @@ const showMapPicker = ref(false);
 // 查詢成功後，如果剛好有存過同一組起訖點的自訂路線，讓使用者選要看系統算的還是自訂的
 const selectedView = ref<"system" | string>("system");
 const matchingCustomRoutes = computed(() =>
-  customRoutesStore.items.filter(
-    (r) =>
-      r.legs.length > 0 &&
-      r.legs[0].from === fromStation.value &&
-      r.legs[r.legs.length - 1].to === toStation.value
-  )
+  settings.flags.customRoutes
+    ? customRoutesStore.items.filter(
+        (r) =>
+          r.legs.length > 0 &&
+          r.legs[0].from === fromStation.value &&
+          r.legs[r.legs.length - 1].to === toStation.value
+      )
+    : []
 );
 const selectedCustomRoute = computed(
   () => matchingCustomRoutes.value.find((r) => r.id === selectedView.value) ?? null

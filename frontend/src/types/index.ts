@@ -102,6 +102,32 @@ export interface ParkingLot {
   distance_meters: number | null;
 }
 
+export interface BikeStation {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  capacity: number | null;
+  available_rent: number | null;
+  available_rent_general: number | null;
+  available_rent_electric: number | null;
+  available_return: number | null;
+  status: string;
+  distance_meters: number | null;
+}
+
+/** 使用者在「設定」頁勾選要不要顯示的功能。未勾選的功能，相關按鈕與分頁都會隱藏。 */
+export interface FeatureFlags {
+  metro: boolean;
+  bus: boolean;
+  nearby: boolean;
+  favorites: boolean;
+  customRoutes: boolean;
+  nearbyParking: boolean;
+  nearbyYoubike: boolean;
+}
+
 export type FavoriteType = "metro-station" | "bus-route" | "stop";
 
 export interface FavoriteItem {
