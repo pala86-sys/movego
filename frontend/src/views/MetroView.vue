@@ -6,7 +6,7 @@ import { searchMetroStations } from "@/api/metro";
 import FavoriteStar from "@/components/FavoriteStar.vue";
 import MetroMapPicker from "@/components/MetroMapPicker.vue";
 import TopBar from "@/components/TopBar.vue";
-import { debounce } from "@/composables/useDebouncedRef";
+import { debounce } from "@/utils/debounce";
 import { computeCustomRouteStats } from "@/composables/useCustomRouteStats";
 import { useCustomRoutesStore } from "@/stores/customRoutes";
 import { useMetroStore } from "@/stores/metro";

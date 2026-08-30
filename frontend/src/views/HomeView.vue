@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import TopBar from "@/components/TopBar.vue";
-import { debounce } from "@/composables/useDebouncedRef";
+import { debounce } from "@/utils/debounce";
 import { useMetroStore } from "@/stores/metro";
 import { useStopStore } from "@/stores/stop";
 import { useFavoritesStore } from "@/stores/favorites";

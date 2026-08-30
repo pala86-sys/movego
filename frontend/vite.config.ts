@@ -31,12 +31,14 @@ export default defineConfig({
         navigateFallback: "/index.html",
         runtimeCaching: [
           {
+            // NetworkFirst：連得上就一定拿新資料；離線時才退回快取。
+            // 到站時間會過期，maxAge 壓到 5 分鐘，避免離線重開時顯示幾小時前的「約 X 分鐘」。
             urlPattern: /\/api\/.*/,
             handler: "NetworkFirst",
             options: {
               cacheName: "movego-api-cache",
               networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 }
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 5 }
             }
           },
           {
