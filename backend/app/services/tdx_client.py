@@ -16,6 +16,25 @@ class TDXError(Exception):
     """TDX 認證或 API 呼叫失敗時拋出，由呼叫端轉換成「目前無法取得即時資料」。"""
 
 
+# 單一共用的 AsyncClient：重用連線池與 TLS 連線，避免每次呼叫都重新握手。
+# 由 app.main 的 lifespan 在關閉時呼叫 close_client() 收掉。
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(timeout=10)
+    return _client
+
+
+async def close_client() -> None:
+    global _client
+    if _client is not None and not _client.is_closed:
+        await _client.aclose()
+    _client = None
+
+
 class _TokenCache:
     access_token: str | None = None
     expires_at: float = 0.0
@@ -34,16 +53,15 @@ async def _get_access_token() -> str:
         return _token_cache.access_token
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.post(
-                AUTH_URL,
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": settings.tdx_client_id,
-                    "client_secret": settings.tdx_client_secret,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
+        response = await _get_client().post(
+            AUTH_URL,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": settings.tdx_client_id,
+                "client_secret": settings.tdx_client_secret,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
         response.raise_for_status()
         payload = response.json()
     except httpx.HTTPError as exc:
@@ -67,12 +85,11 @@ async def tdx_get(path: str, params: dict | None = None) -> list | dict:
     query.setdefault("$format", "JSON")
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(
-                f"{API_BASE}{path}",
-                params=query,
-                headers={"Authorization": f"Bearer {token}"},
-            )
+        response = await _get_client().get(
+            f"{API_BASE}{path}",
+            params=query,
+            headers={"Authorization": f"Bearer {token}"},
+        )
         response.raise_for_status()
         return response.json()
     except httpx.HTTPError as exc:

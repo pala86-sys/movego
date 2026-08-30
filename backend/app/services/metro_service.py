@@ -2,6 +2,8 @@
 import heapq
 from functools import lru_cache
 
+from sqlalchemy.orm import selectinload
+
 from app.core.config import get_settings
 from app.db.database import SessionLocal
 from app.db.models import MetroLineModel
@@ -16,12 +18,19 @@ MINUTES_PER_TRANSFER = 4
 # 避免每次搜尋/規劃路線都重打一次 TDX API；呼叫失敗則不快取，讓下次請求重試。
 _tdx_lines_cache: list[MetroLine] | None = None
 
+# 路網圖只跟「路線清單」有關，而路線清單是靜態的，因此建好一次就快取，
+# 避免每次 plan_route / search 都重建含 O(k²) 轉乘邊的整張圖。
+# 以來源 lines 物件的 identity 當失效判斷：TDX 快取刷新換成新 list 時會自動重建。
+_graph_cache: tuple[list[MetroLine], dict, dict] | None = None
+
 
 @lru_cache
 def _load_lines_mock() -> list[MetroLine]:
     """從 SQLite 讀取捷運路線與站點（結果快取，因參考資料為靜態資料）。"""
     with SessionLocal() as db:
-        line_models = db.query(MetroLineModel).all()
+        line_models = (
+            db.query(MetroLineModel).options(selectinload(MetroLineModel.stations)).all()
+        )
         return [
             MetroLine(
                 id=line.id,
@@ -74,7 +83,11 @@ async def _build_graph():
     邊的權重直接是「分鐘數」（同站相鄰一站 = MINUTES_PER_STOP，轉乘一次 = MINUTES_PER_TRANSFER），
     這樣 Dijkstra 找到的最短路徑就是預估時間最短的路徑，不再是先比轉乘次數、同分才比站數。
     """
+    global _graph_cache
     lines = await _load_lines()
+    if _graph_cache is not None and _graph_cache[0] is lines:
+        return _graph_cache[1], _graph_cache[2]
+
     graph: dict[tuple[str, str], list[tuple[tuple[str, str], int, bool]]] = {}
     station_to_nodes: dict[str, list[tuple[str, str]]] = {}
 
@@ -95,6 +108,7 @@ async def _build_graph():
                 if i != j:
                     graph[nodes[i]].append((nodes[j], MINUTES_PER_TRANSFER, True))
 
+    _graph_cache = (lines, graph, station_to_nodes)
     return graph, station_to_nodes
 
 

@@ -9,6 +9,7 @@ from app.db.database import Base, SessionLocal, engine
 from app.db.seed import seed_if_empty
 from app.routers import bus, metro, parking, stop
 from app.services.tdx_bus_sync import sync_bus_routes_if_needed
+from app.services.tdx_client import close_client
 
 settings = get_settings()
 
@@ -21,6 +22,7 @@ async def lifespan(_: FastAPI):
         if settings.use_tdx:
             await sync_bus_routes_if_needed(db)
     yield
+    await close_client()
 
 
 app = FastAPI(

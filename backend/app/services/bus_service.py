@@ -7,6 +7,8 @@
 """
 from functools import lru_cache
 
+from sqlalchemy.orm import selectinload
+
 from app.core.config import get_settings
 from app.db.database import SessionLocal
 from app.db.models import BusRouteModel
@@ -19,7 +21,10 @@ from app.services.realtime_service import mock_arrival_status
 def _load_raw_routes() -> list[dict]:
     """從 SQLite 讀取公車路線與去回程站牌（結果快取，因為同一次啟動內資料不會變動）。"""
     with SessionLocal() as db:
-        route_models = db.query(BusRouteModel).all()
+        # selectinload：一次撈完所有 stops，避免近千條路線各觸發一次 lazy load（N+1）。
+        route_models = (
+            db.query(BusRouteModel).options(selectinload(BusRouteModel.stops)).all()
+        )
         routes: list[dict] = []
         for route in route_models:
             directions: dict[str, dict] = {"outbound": None, "inbound": None}
