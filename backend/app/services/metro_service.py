@@ -1,10 +1,11 @@
 """捷運資料存取與路線規劃邏輯（不含任何 UI 或 HTTP 細節）。"""
+import asyncio
 import heapq
 from functools import lru_cache
 
 from sqlalchemy.orm import selectinload
 
-from app.core.config import get_settings
+from app.core.config import tdx_enabled
 from app.db.database import SessionLocal
 from app.db.models import MetroLineModel
 from app.schemas.metro import MetroLine, MetroRouteLeg, MetroRoutePlan, MetroStation
@@ -44,7 +45,7 @@ def _load_lines_mock() -> list[MetroLine]:
 
 async def _load_lines() -> list[MetroLine]:
     global _tdx_lines_cache
-    if not get_settings().use_tdx:
+    if not tdx_enabled():
         return _load_lines_mock()
     if _tdx_lines_cache is None:
         _tdx_lines_cache = await tdx_metro_service.fetch_lines_tdx()
@@ -77,14 +78,13 @@ async def search_stations(keyword: str) -> list[dict]:
     ]
 
 
-async def _build_graph():
+def _build_graph(lines: list[MetroLine]):
     """節點為 (line_id, station_name)，同線相鄰站相連，不同線同站名可轉乘。
 
     邊的權重直接是「分鐘數」（同站相鄰一站 = MINUTES_PER_STOP，轉乘一次 = MINUTES_PER_TRANSFER），
     這樣 Dijkstra 找到的最短路徑就是預估時間最短的路徑，不再是先比轉乘次數、同分才比站數。
     """
     global _graph_cache
-    lines = await _load_lines()
     if _graph_cache is not None and _graph_cache[0] is lines:
         return _graph_cache[1], _graph_cache[2]
 
@@ -113,8 +113,19 @@ async def _build_graph():
 
 
 async def plan_route(from_station: str, to_station: str) -> MetroRoutePlan | None:
-    """以預估時間最短為原則規劃路線（邊權重已是分鐘數，Dijkstra 直接找時間最短路徑）。"""
-    graph, station_to_nodes = await _build_graph()
+    """以預估時間最短為原則規劃路線（邊權重已是分鐘數，Dijkstra 直接找時間最短路徑）。
+
+    路線清單是唯一的 I/O（且已快取），取得後把建圖＋Dijkstra 這段純 CPU 工作丟到
+    執行緒，避免站點數變多或並發變高時卡住 event loop。
+    """
+    lines = await _load_lines()
+    return await asyncio.to_thread(_plan_route_sync, lines, from_station, to_station)
+
+
+def _plan_route_sync(
+    lines: list[MetroLine], from_station: str, to_station: str
+) -> MetroRoutePlan | None:
+    graph, station_to_nodes = _build_graph(lines)
 
     if from_station not in station_to_nodes or to_station not in station_to_nodes:
         return None
@@ -163,7 +174,7 @@ async def plan_route(from_station: str, to_station: str) -> MetroRoutePlan | Non
         node = parent
     path.reverse()
 
-    lines_by_id = {line.id: line for line in await _load_lines()}
+    lines_by_id = {line.id: line for line in lines}
 
     legs: list[MetroRouteLeg] = []
     current_line = starts[0][0]
@@ -215,6 +226,6 @@ async def plan_route(from_station: str, to_station: str) -> MetroRoutePlan | Non
 
 async def get_liveboard(station_name: str) -> list[dict] | None:
     """回傳即時到站看板；只有 USE_TDX=true 時才有資料，否則回傳 None 表示此功能未啟用。"""
-    if not get_settings().use_tdx:
+    if not tdx_enabled():
         return None
     return await tdx_metro_service.fetch_liveboard_tdx(station_name)
