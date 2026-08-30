@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.db.models import BusRouteModel, BusRouteStopModel
 from app.services import tdx_bus_service
-from app.services.tdx_bus_service import DIRECTION_KEYS, DIRECTION_LABELS, _zh, make_route_id
+from app.services.tdx_bus_service import DIRECTION_KEYS, DIRECTION_LABELS, make_route_id
+from app.services.tdx_common import zh_text as _zh
 
 logger = logging.getLogger(__name__)
 

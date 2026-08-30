@@ -10,17 +10,11 @@
 防呆，寧可缺欄位也不要讓整支 API 掛掉。
 """
 from app.services.tdx_client import tdx_get
+from app.services.tdx_common import CITIES, zh_text as _zh
 from app.services.ttl_cache import async_ttl_cache
 
-CITIES = ["Taipei", "NewTaipei"]
 DIRECTION_LABELS = {0: "去程", 1: "返程"}
 DIRECTION_KEYS = {0: "outbound", 1: "inbound"}
-
-
-def _zh(field: dict | None) -> str:
-    if not field:
-        return ""
-    return field.get("Zh_tw") or field.get("Zh_TW") or ""
 
 
 def make_route_id(city: str, route_name: str) -> str:

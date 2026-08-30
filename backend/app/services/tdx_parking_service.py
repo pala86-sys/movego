@@ -7,14 +7,7 @@
 座標查詢跟使用者當下位置有關，沒辦法預先批次同步，維持即時呼叫 TDX。
 """
 from app.services.tdx_client import tdx_get
-
-CITIES = ["Taipei", "NewTaipei"]
-
-
-def _zh(field: dict | None) -> str:
-    if not field:
-        return ""
-    return field.get("Zh_tw") or field.get("Zh_TW") or ""
+from app.services.tdx_common import CITIES, zh_text as _zh
 
 
 def _status_from_availability(entry: dict | None) -> tuple[str, int | None, int | None]:

@@ -4,6 +4,7 @@
 """
 from app.schemas.metro import MetroLine, MetroStation
 from app.services.tdx_client import tdx_get
+from app.services.tdx_common import zh_text as _zh
 from app.services.ttl_cache import async_ttl_cache
 
 # 台北捷運本體在 TRTC，環狀線由新北捷運公司營運，掛在 NTMC 底下（TDX 官方 RailSystem 代碼）
@@ -37,12 +38,6 @@ LINE_NAMES = {
 KNOWN_BRANCH_ATTACHMENTS: dict[tuple[str, str], str] = {
     ("O", "三重國小"): "大橋頭",
 }
-
-
-def _zh(field: dict | None) -> str:
-    if not field:
-        return ""
-    return field.get("Zh_tw") or field.get("Zh_TW") or ""
 
 
 def _split_into_contiguous_segments(stations_raw: list[dict]) -> list[list[dict]]:
