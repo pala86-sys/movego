@@ -1,9 +1,41 @@
 """TDX 回傳資料 → 內部格式的純函式轉換測試（不發網路請求）。"""
+from app.schemas.metro import MetroStation
 from app.services.tdx_bus_service import make_route_id, parse_route_id, status_from_eta
 from app.services.tdx_metro_service import (
+    _apply_terminus_extensions,
     _split_into_contiguous_segments,
     _status_from_liveboard_entry,
 )
+
+
+def _names(stations):
+    return [s.name for s in stations]
+
+
+class TestApplyTerminusExtensions:
+    def test_prepends_when_anchor_is_first(self):
+        # TDX 的 R 線陣列是從象山端開始排的
+        stations = [MetroStation(id="R02", name="象山"), MetroStation(id="R03", name="台北101/世貿")]
+        out = _apply_terminus_extensions("R", stations)
+        assert _names(out) == ["廣慈/奉天宮", "象山", "台北101/世貿"]
+
+    def test_appends_when_anchor_is_last(self):
+        stations = [MetroStation(id="R03", name="台北101/世貿"), MetroStation(id="R02", name="象山")]
+        out = _apply_terminus_extensions("R", stations)
+        assert _names(out) == ["台北101/世貿", "象山", "廣慈/奉天宮"]
+
+    def test_noop_when_extension_already_present(self):
+        stations = [MetroStation(id="R01", name="廣慈/奉天宮"), MetroStation(id="R02", name="象山")]
+        out = _apply_terminus_extensions("R", stations)
+        assert _names(out) == ["廣慈/奉天宮", "象山"]
+
+    def test_noop_when_anchor_absent(self):
+        stations = [MetroStation(id="R10", name="台北車站")]
+        assert _names(_apply_terminus_extensions("R", stations)) == ["台北車站"]
+
+    def test_other_lines_untouched(self):
+        stations = [MetroStation(id="BL12", name="市政府"), MetroStation(id="BL11", name="象山")]
+        assert _names(_apply_terminus_extensions("BL", stations)) == ["市政府", "象山"]
 
 
 class TestStatusFromEta:

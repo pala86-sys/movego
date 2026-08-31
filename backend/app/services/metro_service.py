@@ -15,10 +15,6 @@ from app.services import tdx_metro_service
 MINUTES_PER_STOP = 2
 MINUTES_PER_TRANSFER = 4
 
-# TDX 的路線／站點資料屬於靜態參考資料（不常變動），呼叫成功後快取在記憶體中，
-# 避免每次搜尋/規劃路線都重打一次 TDX API；呼叫失敗則不快取，讓下次請求重試。
-_tdx_lines_cache: list[MetroLine] | None = None
-
 # 路網圖只跟「路線清單」有關，而路線清單是靜態的，因此建好一次就快取，
 # 避免每次 plan_route / search 都重建含 O(k²) 轉乘邊的整張圖。
 # 以來源 lines 物件的 identity 當失效判斷：TDX 快取刷新換成新 list 時會自動重建。
@@ -44,12 +40,10 @@ def _load_lines_mock() -> list[MetroLine]:
 
 
 async def _load_lines() -> list[MetroLine]:
-    global _tdx_lines_cache
+    # TDX 路線資料由 fetch_lines_tdx 自己做 6 小時 TTL 快取（失敗不快取，下次重試）。
     if not tdx_enabled():
         return _load_lines_mock()
-    if _tdx_lines_cache is None:
-        _tdx_lines_cache = await tdx_metro_service.fetch_lines_tdx()
-    return _tdx_lines_cache
+    return await tdx_metro_service.fetch_lines_tdx()
 
 
 async def get_all_lines() -> list[MetroLine]:

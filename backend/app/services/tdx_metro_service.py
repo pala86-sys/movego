@@ -39,6 +39,31 @@ KNOWN_BRANCH_ATTACHMENTS: dict[tuple[str, str], str] = {
     ("O", "三重國小"): "大橋頭",
 }
 
+# 官方已通車、但 TDX 的 StationOfLine 尚未補上的路線端點延伸。
+# key：(路線代碼, TDX 目前的端點站名)；value：(要補上的新端點站名, 站碼)
+# 補上的站會接在「目前端點站」的更外側；等 TDX 自己補上同名站後，這裡就自動變成 no-op。
+KNOWN_TERMINUS_EXTENSIONS: dict[tuple[str, str], tuple[str, str]] = {
+    ("R", "象山"): ("廣慈/奉天宮", "R01"),  # 信義線東延段
+}
+
+
+def _apply_terminus_extensions(line_id: str, stations: list[MetroStation]) -> list[MetroStation]:
+    """把 KNOWN_TERMINUS_EXTENSIONS 裡、TDX 還沒補上的端點延伸站接到路線端點外側。"""
+    for (ext_line, anchor), (ext_name, ext_code) in KNOWN_TERMINUS_EXTENSIONS.items():
+        if ext_line != line_id:
+            continue
+        names = [s.name for s in stations]
+        if ext_name in names or anchor not in names:
+            continue  # TDX 已經有這站，或找不到接點 → 不動
+        idx = names.index(anchor)
+        ext_station = MetroStation(id=ext_code, name=ext_name)
+        if idx == 0:
+            stations = [ext_station, *stations]
+        elif idx == len(stations) - 1:
+            stations = [*stations, ext_station]
+        # anchor 不在端點（資料型態跟預期不同）就保守不動
+    return stations
+
 
 def _split_into_contiguous_segments(stations_raw: list[dict]) -> list[list[dict]]:
     """依 Sequence 是否連續切段，避免把分岔路線裡不相鄰的站誤判成相鄰。"""
@@ -54,6 +79,7 @@ def _split_into_contiguous_segments(stations_raw: list[dict]) -> list[list[dict]
     return segments
 
 
+@async_ttl_cache(6 * 60 * 60)  # 路線拓樸極少變動；快取 6 小時，讓新站不必等後端重啟就會出現
 async def fetch_lines_tdx() -> list[MetroLine]:
     lines: list[MetroLine] = []
     for rail_system in RAIL_SYSTEMS:
@@ -75,6 +101,7 @@ async def fetch_lines_tdx() -> list[MetroLine]:
             ]
             if not main_stations:
                 continue
+            main_stations = _apply_terminus_extensions(line_id, main_stations)
             lines.append(MetroLine(id=line_id, name=line_name, color=line_color, stations=main_stations))
 
             for i, segment in enumerate(segments[1:], start=1):
